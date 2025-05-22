@@ -9,11 +9,9 @@
     <artifactId>wms-cashier</artifactId>
 
     <dependencies>
-
         <dependency>
             <groupId>top.flyingjack</groupId>
-            <artifactId>common</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <artifactId>common-lib</artifactId>
         </dependency>
 
         <dependency>
