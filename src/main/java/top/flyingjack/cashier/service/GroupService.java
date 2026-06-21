@@ -87,6 +87,7 @@ public class GroupService {
         groupMapper.insertJoinRequest(securityContext.currentUserId(), groupId);
     }
 
+    @PreAuthorize("hasRole('DEFAULT')")
     public void createJoinRequestByOwnerPhone(String phone) {
         ApiRes<Long> res = authServiceClient.getUserIdByPhone(phone);
         Assert.notNull(res.getData(), "no user found with that phone");
