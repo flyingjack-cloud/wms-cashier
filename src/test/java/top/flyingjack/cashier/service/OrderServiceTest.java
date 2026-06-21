@@ -15,6 +15,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,7 +42,8 @@ class OrderServiceTest {
 
     @Test
     void returnOrder_setsReturnedFlag() {
+        when(securityContext.currentGroupId()).thenReturn(1);
         orderService.returnOrder(1);
-        verify(orderMapper).markReturned(1);
+        verify(orderMapper).markReturned(eq(1), anyInt());
     }
 }

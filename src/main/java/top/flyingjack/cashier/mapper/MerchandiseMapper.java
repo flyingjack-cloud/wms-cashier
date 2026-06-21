@@ -17,7 +17,8 @@ public interface MerchandiseMapper {
                                            @Param("text") String text, @Param("sold") boolean sold);
     void insert(Merchandise merchandise);
     void update(@Param("id") int id, @Param("cost") java.math.BigDecimal cost,
-                @Param("price") java.math.BigDecimal price, @Param("imei") String imei);
-    void deleteById(@Param("id") int id);
+                @Param("price") java.math.BigDecimal price, @Param("imei") String imei,
+                @Param("groupId") int groupId);
+    void deleteById(@Param("id") int id, @Param("groupId") int groupId);
     List<MeCount> accountByGroup(@Param("groupId") int groupId);
 }

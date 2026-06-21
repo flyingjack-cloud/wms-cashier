@@ -10,7 +10,7 @@
     </select>
 
     <select id="findById" resultType="top.flyingjack.cashier.entity.Category">
-        SELECT id, group_id, parent_id, name FROM wms_category WHERE id = #{id}
+        SELECT id, group_id, parent_id, name FROM wms_category WHERE id = #{id} AND group_id = #{groupId}
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
@@ -19,7 +19,7 @@
     </insert>
 
     <delete id="deleteById">
-        DELETE FROM wms_category WHERE id = #{id}
+        DELETE FROM wms_category WHERE id = #{id} AND group_id = #{groupId}
     </delete>
 
 </mapper>

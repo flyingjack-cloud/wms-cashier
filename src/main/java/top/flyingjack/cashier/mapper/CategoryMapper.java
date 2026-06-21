@@ -9,7 +9,7 @@ import java.util.List;
 @Mapper
 public interface CategoryMapper {
     List<Category> findByParentId(@Param("groupId") int groupId, @Param("parentId") int parentId);
-    Category findById(@Param("id") int id);
+    Category findById(@Param("id") int id, @Param("groupId") int groupId);
     void insert(Category category);
-    void deleteById(@Param("id") int id);
+    void deleteById(@Param("id") int id, @Param("groupId") int groupId);
 }

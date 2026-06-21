@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import top.flyingjack.cashier.entity.WmsUserProfile;
 import top.flyingjack.cashier.mapper.AuthorityMapper;
 import top.flyingjack.cashier.mapper.WmsUserProfileMapper;
 import top.flyingjack.cashier.security.WmsSecurityContext;
@@ -28,6 +29,9 @@ class AuthorityServiceTest {
     @Test
     void updatePermissions_deletesOldAndInsertsNew() {
         when(securityContext.currentUserId()).thenReturn(1L);
+        when(securityContext.currentGroupId()).thenReturn(5);
+        WmsUserProfile targetProfile = new WmsUserProfile(2L, 5, "ROLE_STAFF");
+        when(profileMapper.findByUserId(2L)).thenReturn(targetProfile);
 
         authorityService.updatePermissions(2L, true, false, true);
 

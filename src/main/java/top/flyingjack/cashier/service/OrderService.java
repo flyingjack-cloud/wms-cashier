@@ -45,6 +45,6 @@ public class OrderService {
     }
 
     public void returnOrder(int orderId) {
-        orderMapper.markReturned(orderId);
+        orderMapper.markReturned(orderId, securityContext.currentGroupId());
     }
 }

@@ -1,6 +1,7 @@
 package top.flyingjack.cashier.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import top.flyingjack.cashier.entity.MeCount;
 import top.flyingjack.cashier.entity.Merchandise;
 import top.flyingjack.cashier.mapper.MerchandiseMapper;
@@ -36,6 +37,7 @@ public class MerchandiseService {
         return merchandiseMapper.searchByGroupAndText(securityContext.currentGroupId(), text, sold);
     }
 
+    @Transactional
     public void insertMerchandise(int cateId, BigDecimal cost, BigDecimal price,
                                    List<String> imeiList, Instant createdAt) {
         int groupId = securityContext.currentGroupId();
@@ -53,11 +55,11 @@ public class MerchandiseService {
     }
 
     public void updateMerchandise(int id, BigDecimal cost, BigDecimal price, String imei) {
-        merchandiseMapper.update(id, cost, price, imei);
+        merchandiseMapper.update(id, cost, price, imei, securityContext.currentGroupId());
     }
 
     public void deleteMerchandise(int id) {
-        merchandiseMapper.deleteById(id);
+        merchandiseMapper.deleteById(id, securityContext.currentGroupId());
     }
 
     public List<MeCount> accountMerchandises() {

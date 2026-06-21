@@ -14,5 +14,5 @@ public interface OrderMapper {
     List<Order> findByGroupAndDateRange(@Param("groupId") int groupId,
                                         @Param("start") Instant start,
                                         @Param("end") Instant end);
-    void markReturned(@Param("id") int id);
+    void markReturned(@Param("id") int id, @Param("groupId") int groupId);
 }

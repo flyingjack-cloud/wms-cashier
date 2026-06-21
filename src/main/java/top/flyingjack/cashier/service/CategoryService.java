@@ -22,7 +22,7 @@ public class CategoryService {
     }
 
     public Category getCategory(int id) {
-        return categoryMapper.findById(id);
+        return categoryMapper.findById(id, securityContext.currentGroupId());
     }
 
     public int insertCategory(int parentId, String name) {
@@ -35,6 +35,6 @@ public class CategoryService {
     }
 
     public void deleteCategory(int id) {
-        categoryMapper.deleteById(id);
+        categoryMapper.deleteById(id, securityContext.currentGroupId());
     }
 }

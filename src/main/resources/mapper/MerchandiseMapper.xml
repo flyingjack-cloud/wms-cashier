@@ -36,11 +36,11 @@
 
     <update id="update">
         UPDATE wms_merchandise SET cost = #{cost}, price = #{price}, imei = #{imei}
-        WHERE id = #{id}
+        WHERE id = #{id} AND group_id = #{groupId}
     </update>
 
     <delete id="deleteById">
-        DELETE FROM wms_merchandise WHERE id = #{id}
+        DELETE FROM wms_merchandise WHERE id = #{id} AND group_id = #{groupId}
     </delete>
 
     <select id="accountByGroup" resultType="top.flyingjack.cashier.entity.MeCount">
