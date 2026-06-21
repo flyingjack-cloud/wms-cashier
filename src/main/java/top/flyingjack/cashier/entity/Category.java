@@ -1,24 +1,17 @@
 package top.flyingjack.cashier.entity;
 
-/**
- * 商品分类
- *
- * @author Zumin Li
- * @date 2024/2/10 20:37
- */
 public class Category {
     private int id;
-    private int parentId; // 父分类id，用于多级分类，0表示一级分类
+    private int groupId;
+    private int parentId;
     private String name;
 
-    private int ownerId;
-    private int groupId;
-
-    public Category(int id, int parentId, String name, int ownerId, int groupId) {
-        this.id = id;
-        this.parentId = parentId;
-        this.name = name;
-        this.ownerId = ownerId;
-        this.groupId = groupId;
-    }
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public int getGroupId() { return groupId; }
+    public void setGroupId(int groupId) { this.groupId = groupId; }
+    public int getParentId() { return parentId; }
+    public void setParentId(int parentId) { this.parentId = parentId; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 }
