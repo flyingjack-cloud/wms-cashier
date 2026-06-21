@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.flyingjack.cashier.mapper.GroupMapper">
+
+    <insert id="insertGroup" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO wms_group (store_name, address, contact, created_at)
+        VALUES (#{storeName}, #{address}, #{contact}, #{createdAt})
+    </insert>
+
+    <select id="findByUserId" resultType="top.flyingjack.cashier.entity.Group">
+        SELECT g.id, g.store_name, g.address, g.contact, g.created_at
+        FROM wms_group g
+        JOIN wms_user_profile p ON g.id = p.group_id
+        WHERE p.user_id = #{userId}
+    </select>
+
+    <select id="findById" resultType="top.flyingjack.cashier.entity.Group">
+        SELECT id, store_name, address, contact, created_at FROM wms_group WHERE id = #{id}
+    </select>
+
+    <update id="updateGroupOfUser">
+        UPDATE wms_user_profile SET group_id = #{groupId} WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateStoreName">
+        UPDATE wms_group SET store_name = #{storeName} WHERE id = #{groupId}
+    </update>
+
+    <update id="updateAddress">
+        UPDATE wms_group SET address = #{address} WHERE id = #{groupId}
+    </update>
+
+    <update id="updateContact">
+        UPDATE wms_group SET contact = #{contact} WHERE id = #{groupId}
+    </update>
+
+    <select id="findProfilesByGroupId" resultType="top.flyingjack.cashier.entity.WmsUserProfile">
+        SELECT user_id, group_id, role, nickname FROM wms_user_profile WHERE group_id = #{groupId}
+    </select>
+
+    <insert id="insertJoinRequest">
+        INSERT INTO wms_join_request (user_id, group_id) VALUES (#{userId}, #{groupId})
+        ON CONFLICT (user_id) DO NOTHING
+    </insert>
+
+    <delete id="deleteJoinRequest">
+        DELETE FROM wms_join_request WHERE user_id = #{userId}
+    </delete>
+
+    <select id="findGroupByUserIdInRequest" resultType="top.flyingjack.cashier.entity.Group">
+        SELECT g.id, g.store_name, g.address, g.contact, g.created_at
+        FROM wms_group g
+        JOIN wms_join_request r ON g.id = r.group_id
+        WHERE r.user_id = #{userId}
+    </select>
+
+    <select id="findRequestProfilesByGroupId" resultType="top.flyingjack.cashier.entity.WmsUserProfile">
+        SELECT p.user_id, p.group_id, p.role, p.nickname
+        FROM wms_user_profile p
+        JOIN wms_join_request r ON p.user_id = r.user_id
+        WHERE r.group_id = #{groupId}
+    </select>
+
+</mapper>
