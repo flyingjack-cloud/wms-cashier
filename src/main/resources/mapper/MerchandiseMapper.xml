@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.flyingjack.cashier.mapper.MerchandiseMapper">
+
+    <select id="countByGroupAndSold" resultType="int">
+        SELECT COUNT(*) FROM wms_merchandise
+        WHERE group_id = #{groupId} AND sold = #{sold}
+    </select>
+
+    <select id="findByGroupPaged" resultType="top.flyingjack.cashier.entity.Merchandise">
+        SELECT id, group_id, cate_id, cost, price, imei, sold, created_at
+        FROM wms_merchandise
+        WHERE group_id = #{groupId} AND sold = #{sold}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findByCateId" resultType="top.flyingjack.cashier.entity.Merchandise">
+        SELECT id, group_id, cate_id, cost, price, imei, sold, created_at
+        FROM wms_merchandise
+        WHERE group_id = #{groupId} AND cate_id = #{cateId}
+    </select>
+
+    <select id="searchByGroupAndText" resultType="top.flyingjack.cashier.entity.Merchandise">
+        SELECT id, group_id, cate_id, cost, price, imei, sold, created_at
+        FROM wms_merchandise
+        WHERE group_id = #{groupId} AND sold = #{sold}
+          AND (imei ILIKE CONCAT('%', #{text}, '%'))
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO wms_merchandise (group_id, cate_id, cost, price, imei, sold, created_at)
+        VALUES (#{groupId}, #{cateId}, #{cost}, #{price}, #{imei}, #{sold}, #{createdAt})
+    </insert>
+
+    <update id="update">
+        UPDATE wms_merchandise SET cost = #{cost}, price = #{price}, imei = #{imei}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM wms_merchandise WHERE id = #{id}
+    </delete>
+
+    <select id="accountByGroup" resultType="top.flyingjack.cashier.entity.MeCount">
+        SELECT c.name AS cate_name,
+               COUNT(m.id) AS total,
+               SUM(CASE WHEN m.sold THEN 1 ELSE 0 END) AS sold,
+               SUM(m.cost) AS total_cost,
+               SUM(m.price) AS total_price
+        FROM wms_merchandise m
+        JOIN wms_category c ON m.cate_id = c.id
+        WHERE m.group_id = #{groupId}
+        GROUP BY c.name
+    </select>
+
+</mapper>
