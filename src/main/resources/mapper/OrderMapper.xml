@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.flyingjack.cashier.mapper.OrderMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO wms_order (group_id, me_id, selling_price, selling_time, remark, is_returned)
+        VALUES (#{groupId}, #{meId}, #{sellingPrice}, #{sellingTime}, #{remark}, #{returned})
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO wms_order (group_id, me_id, selling_price, selling_time, remark, is_returned)
+        VALUES
+        <foreach collection="orders" item="o" separator=",">
+            (#{o.groupId}, #{o.meId}, #{o.sellingPrice}, #{o.sellingTime}, #{o.remark}, #{o.returned})
+        </foreach>
+    </insert>
+
+    <select id="findByGroupAndDateRange" resultType="top.flyingjack.cashier.entity.Order">
+        SELECT id, group_id, me_id, selling_price, selling_time, remark, is_returned AS returned
+        FROM wms_order
+        WHERE group_id = #{groupId}
+          AND selling_time BETWEEN #{start} AND #{end}
+        ORDER BY selling_time DESC
+    </select>
+
+    <update id="markReturned">
+        UPDATE wms_order SET is_returned = TRUE WHERE id = #{id}
+    </update>
+
+</mapper>
