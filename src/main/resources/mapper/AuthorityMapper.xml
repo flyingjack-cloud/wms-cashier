@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.flyingjack.cashier.mapper.AuthorityMapper">
+
+    <select id="findAuthoritiesByUserId" resultType="string">
+        SELECT authority FROM wms_authority WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insertAuthority">
+        INSERT INTO wms_authority (user_id, authority) VALUES (#{userId}, #{authority})
+        ON CONFLICT DO NOTHING
+    </insert>
+
+    <delete id="deleteAuthority">
+        DELETE FROM wms_authority WHERE user_id = #{userId} AND authority = #{authority}
+    </delete>
+
+    <delete id="deleteAllPermissions">
+        DELETE FROM wms_authority WHERE user_id = #{userId}
+    </delete>
+
+</mapper>
