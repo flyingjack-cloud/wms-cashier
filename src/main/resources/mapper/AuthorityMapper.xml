@@ -9,7 +9,7 @@
 
     <insert id="insertAuthority">
         INSERT INTO wms_authority (user_id, authority) VALUES (#{userId}, #{authority})
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (user_id, authority) DO NOTHING
     </insert>
 
     <delete id="deleteAuthority">
