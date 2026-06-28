@@ -124,6 +124,54 @@ class OAuthCallbackControllerTest {
     }
 
     @Test
+    void callback_returns401WhenIdTokenIsNull() throws Exception {
+        UacTokenResponse uacResp = new UacTokenResponse(
+                "access-token-xyz", "Bearer", 7200L, "refresh-token-abc", null
+        );
+        when(tokenService.exchangeCode(anyString(), anyString())).thenReturn(uacResp);
+
+        CallbackRequest req = new CallbackRequest("auth-code-123", "verifier-xyz");
+
+        mockMvc.perform(post("/oauth/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void callback_returns401WhenSubIsNonNumeric() throws Exception {
+        UacTokenResponse uacResp = new UacTokenResponse(
+                "access-token-xyz", "Bearer", 7200L, "refresh-token-abc",
+                "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1dWlkLW5vdC1udW1lcmljIn0.sig"
+        );
+        when(tokenService.exchangeCode(anyString(), anyString())).thenReturn(uacResp);
+
+        Jwt jwtMock = mock(Jwt.class);
+        when(jwtMock.getSubject()).thenReturn("uuid-not-numeric");
+        when(jwtDecoder.decode(anyString())).thenReturn(jwtMock);
+
+        CallbackRequest req = new CallbackRequest("auth-code-123", "verifier-xyz");
+
+        mockMvc.perform(post("/oauth/callback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refresh_returns401WhenTokenRefreshFails() throws Exception {
+        OAuthSession existingSession = new OAuthSession("expired-refresh", 42L);
+        when(sessionService.getSession("session-id-001")).thenReturn(existingSession);
+        when(tokenService.refreshToken("expired-refresh"))
+                .thenThrow(new org.springframework.web.client.HttpClientErrorException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST));
+
+        mockMvc.perform(post("/oauth/refresh")
+                        .cookie(new Cookie("WMS_SESSION", "session-id-001")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void logout_deletesSessionAndClearsCookie() throws Exception {
         mockMvc.perform(post("/oauth/logout")
                         .cookie(new Cookie("WMS_SESSION", "session-id-001")))

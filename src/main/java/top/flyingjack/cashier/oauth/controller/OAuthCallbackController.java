@@ -49,25 +49,39 @@ public class OAuthCallbackController {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        Jwt idToken = jwtDecoder.decode(uacResp.idToken());
-        long userId = Long.parseLong(idToken.getSubject());
-        String sessionId = sessionService.createSession(uacResp.refreshToken(), userId);
+        if (uacResp.idToken() == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
+        Jwt idToken = jwtDecoder.decode(uacResp.idToken());
+        long userId;
+        try {
+            userId = Long.parseLong(idToken.getSubject());
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        String sessionId = sessionService.createSession(uacResp.refreshToken(), userId);
         response.addCookie(buildCookie(sessionId, SESSION_MAX_AGE));
         return ApiRes.success(new TokenResult(uacResp.accessToken(), uacResp.expiresIn()));
     }
 
     @PostMapping("/refresh")
     public ApiRes<TokenResult> refresh(
-            @CookieValue(name = COOKIE_NAME, required = false) String sessionId) {
+            @CookieValue(name = COOKIE_NAME, required = false) String sessionId,
+            HttpServletResponse response) {
         if (sessionId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
         OAuthSession session = sessionService.getSession(sessionId);
         if (session == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
 
-        UacTokenResponse uacResp = tokenService.refreshToken(session.refreshToken());
-        sessionService.rotateSession(sessionId, uacResp.refreshToken());
+        UacTokenResponse uacResp;
+        try {
+            uacResp = tokenService.refreshToken(session.refreshToken());
+        } catch (HttpClientErrorException e) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
 
+        sessionService.rotateSession(sessionId, uacResp.refreshToken());
+        response.addCookie(buildCookie(sessionId, SESSION_MAX_AGE));
         return ApiRes.success(new TokenResult(uacResp.accessToken(), uacResp.expiresIn()));
     }
 

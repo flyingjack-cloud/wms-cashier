@@ -17,7 +17,7 @@ public class UacTokenService {
 
     public UacTokenService(
             RestClient.Builder builder,
-            @Value("${auth.issuer-uri:http://localhost:9001}") String issuerUri,
+            @Value("${wms.oauth.auth-service-uri:http://localhost:9001}") String issuerUri,
             @Value("${wms.oauth.client-id}") String clientId,
             @Value("${wms.oauth.redirect-uri}") String redirectUri
     ) {

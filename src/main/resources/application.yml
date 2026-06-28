@@ -40,6 +40,7 @@ auth:
 
 wms:
   oauth:
+    auth-service-uri: ${AUTH_SERVICE_URI:http://localhost:9001}
     client-id: ${OAUTH2_CLIENT_ID:sample-client}
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:4300/callback}
     session:
