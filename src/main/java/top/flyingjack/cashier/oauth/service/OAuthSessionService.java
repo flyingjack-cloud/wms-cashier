@@ -1,5 +1,7 @@
 package top.flyingjack.cashier.oauth.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import top.flyingjack.cashier.oauth.dto.OAuthSession;
 import top.flyingjack.common.cache.CacheService;
@@ -9,6 +11,7 @@ import java.util.UUID;
 @Service
 public class OAuthSessionService {
 
+    private static final Logger log = LoggerFactory.getLogger(OAuthSessionService.class);
     private static final String KEY_PREFIX = "wms:oauth:session:";
     private static final long SESSION_TTL = 7 * 24 * 3600L;
 
@@ -27,6 +30,9 @@ public class OAuthSessionService {
     public OAuthSession getSession(String sessionId) {
         Object raw = cacheService.get(KEY_PREFIX + sessionId);
         if (raw instanceof OAuthSession session) return session;
+        if (raw != null) {
+            log.warn("Unexpected type for session key {}: {}", sessionId, raw.getClass().getName());
+        }
         return null;
     }
 
