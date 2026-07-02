@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.flyingjack.cashier.entity.MeCount;
 import top.flyingjack.cashier.entity.Merchandise;
+import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 import top.flyingjack.cashier.mapper.MerchandiseMapper;
 import top.flyingjack.cashier.security.WmsSecurityContext;
 
@@ -25,7 +26,7 @@ public class MerchandiseService {
         return merchandiseMapper.countByGroupAndSold(securityContext.currentGroupId(), sold);
     }
 
-    public List<Merchandise> getMerchandiseByPage(int limit, int offset, boolean sold) {
+    public List<MerchandiseWithCategoryDto> getMerchandiseByPage(int limit, int offset, boolean sold) {
         return merchandiseMapper.findByGroupPaged(securityContext.currentGroupId(), sold, limit, offset);
     }
 

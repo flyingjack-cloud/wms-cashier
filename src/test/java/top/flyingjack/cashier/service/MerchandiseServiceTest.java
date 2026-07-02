@@ -5,7 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import top.flyingjack.cashier.entity.Category;
 import top.flyingjack.cashier.entity.Merchandise;
+import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 import top.flyingjack.cashier.mapper.MerchandiseMapper;
 import top.flyingjack.cashier.security.WmsSecurityContext;
 
@@ -42,5 +44,19 @@ class MerchandiseServiceTest {
         int count = merchandiseService.getMerchandiseCount(false);
 
         assertThat(count).isEqualTo(5);
+    }
+
+    @Test
+    void getMerchandiseByPage_includesNestedCategory() {
+        Category category = new Category();
+        category.setName("手机");
+        MerchandiseWithCategoryDto merchandise = new MerchandiseWithCategoryDto();
+        merchandise.setCategory(category);
+        when(securityContext.currentGroupId()).thenReturn(1);
+        when(merchandiseMapper.findByGroupPaged(1, false, 20, 0)).thenReturn(List.of(merchandise));
+
+        List<MerchandiseWithCategoryDto> result = merchandiseService.getMerchandiseByPage(20, 0, false);
+
+        assertThat(result.get(0).getCategory().getName()).isEqualTo("手机");
     }
 }

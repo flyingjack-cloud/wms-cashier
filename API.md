@@ -336,12 +336,15 @@ Get paginated merchandise list.
 | Auth | Required |
 | Params | `sold: boolean`, `limit: int (1–999)`, `offset: int (≥0)` |
 
-**Response** `data: { count: int, merchandise: Merchandise[] }`
+**Response** `data: { count: int, merchandise: MerchandiseWithCategoryDto[] }` — each item is a `Merchandise` plus a nested `category` object (`null` if the category was since deleted)
 ```json
 {
   "count": 42,
   "merchandise": [
-    { "id": 1, "groupId": 10, "cateId": 2, "cost": "100.00", "price": "150.00", "imei": "123456789", "sold": false, "createdAt": "2025-01-01T00:00:00Z" }
+    {
+      "id": 1, "groupId": 10, "cateId": 2, "cost": "100.00", "price": "150.00", "imei": "123456789", "sold": false, "createdAt": "2025-01-01T00:00:00Z",
+      "category": { "id": 2, "groupId": 10, "parentId": 0, "name": "手机" }
+    }
   ]
 }
 ```
@@ -436,7 +439,7 @@ Get the latest notice of a given type.
 
 ## Order `/order`
 
-### POST `/order/`
+### POST `/order`
 Create a single order.
 
 | | |
@@ -474,14 +477,28 @@ Batch create orders.
 ---
 
 ### GET `/order/range`
-Get orders within a time range.
+Get paginated orders within a time range.
 
 | | |
 |---|---|
 | Auth | Required |
-| Params | `start: long (epoch ms)`, `end: long (epoch ms)` |
+| Params | `start: long (epoch ms)`, `end: long (epoch ms)`, `limit: int (1–999)`, `offset: int (≥0)` |
 
-**Response** `data: Order[]`
+**Response** `data: { count: int, orders: OrderListItemDto[] }` — each item is an `Order` plus a nested `merchandise` object (`null` if the merchandise record was since deleted), which itself nests a `category` object (`null` if the category was since deleted)
+```json
+{
+  "count": 12,
+  "orders": [
+    {
+      "id": 1, "groupId": 10, "meId": 2, "sellingPrice": "150.00", "sellingTime": "2025-01-01T00:00:00Z", "remark": "备注", "returned": false,
+      "merchandise": {
+        "id": 2, "groupId": 10, "cateId": 1, "cost": "100.00", "price": "150.00", "imei": "123456789", "sold": true, "createdAt": "2025-01-01T00:00:00Z",
+        "category": { "id": 1, "groupId": 10, "parentId": 0, "name": "手机" }
+      }
+    }
+  ]
+}
+```
 
 ---
 

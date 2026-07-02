@@ -4,13 +4,14 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import top.flyingjack.cashier.entity.MeCount;
 import top.flyingjack.cashier.entity.Merchandise;
+import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 
 import java.util.List;
 
 @Mapper
 public interface MerchandiseMapper {
     int countByGroupAndSold(@Param("groupId") int groupId, @Param("sold") boolean sold);
-    List<Merchandise> findByGroupPaged(@Param("groupId") int groupId, @Param("sold") boolean sold,
+    List<MerchandiseWithCategoryDto> findByGroupPaged(@Param("groupId") int groupId, @Param("sold") boolean sold,
                                        @Param("limit") int limit, @Param("offset") int offset);
     List<Merchandise> findByCateId(@Param("groupId") int groupId, @Param("cateId") int cateId);
     List<Merchandise> searchByGroupAndText(@Param("groupId") int groupId,

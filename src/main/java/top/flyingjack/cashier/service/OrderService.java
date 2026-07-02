@@ -3,6 +3,7 @@ package top.flyingjack.cashier.service;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import top.flyingjack.cashier.entity.Order;
+import top.flyingjack.cashier.entity.OrderListItemDto;
 import top.flyingjack.cashier.mapper.OrderMapper;
 import top.flyingjack.cashier.security.WmsSecurityContext;
 
@@ -40,8 +41,13 @@ public class OrderService {
         orderMapper.insertBatch(orders);
     }
 
-    public List<Order> getOrdersByDateRange(Instant start, Instant end) {
-        return orderMapper.findByGroupAndDateRange(securityContext.currentGroupId(), start, end);
+    public int getOrderCount(Instant start, Instant end) {
+        return orderMapper.countByGroupAndDateRange(securityContext.currentGroupId(), start, end);
+    }
+
+    public List<OrderListItemDto> getOrdersByPage(int limit, int offset, Instant start, Instant end) {
+        return orderMapper.findByGroupAndDateRangePaged(
+                securityContext.currentGroupId(), start, end, limit, offset);
     }
 
     public void returnOrder(int orderId) {

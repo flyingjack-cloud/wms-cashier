@@ -22,17 +22,16 @@ public class MerchandiseController {
         this.merchandiseService = merchandiseService;
     }
 
-    @GetMapping("/")
+    @GetMapping
     public ResponseEntity<ApiRes<Map<String, Object>>> getMerchandise(
             @RequestParam boolean sold, @RequestParam int limit, @RequestParam int offset) {
         if (limit > 999 || limit <= 0 || offset < 0) {
             return ResponseEntity.badRequest().body(ApiRes.fail(org.springframework.http.HttpStatus.BAD_REQUEST));
         }
         int count = merchandiseService.getMerchandiseCount(sold);
-        int effectiveLimit = Math.min(limit, count);
         Map<String, Object> data = new HashMap<>();
         data.put("count", count);
-        data.put("merchandise", merchandiseService.getMerchandiseByPage(effectiveLimit, offset, sold));
+        data.put("merchandise", merchandiseService.getMerchandiseByPage(limit, offset, sold));
         return ResponseEntity.ok(ApiRes.success(data));
     }
 
@@ -41,7 +40,7 @@ public class MerchandiseController {
         return ResponseEntity.ok(ApiRes.success(merchandiseService.getMerchandiseByCateId(cateId)));
     }
 
-    @PostMapping("/")
+    @PostMapping
     public ResponseEntity<ApiRes<Void>> insertMerchandise(
             @RequestParam("cate_id") int cateId, @RequestParam BigDecimal cost,
             @RequestParam BigDecimal price, @RequestParam("imei_list") List<String> imeiList,

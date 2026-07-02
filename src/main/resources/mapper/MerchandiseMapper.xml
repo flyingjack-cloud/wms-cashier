@@ -8,11 +8,30 @@
         WHERE group_id = #{groupId} AND sold = #{sold}
     </select>
 
-    <select id="findByGroupPaged" resultType="top.flyingjack.cashier.entity.Merchandise">
-        SELECT id, group_id, cate_id, cost, price, imei, sold, created_at
-        FROM wms_merchandise
-        WHERE group_id = #{groupId} AND sold = #{sold}
-        ORDER BY created_at DESC
+    <resultMap id="merchandiseWithCategoryMap" type="top.flyingjack.cashier.entity.MerchandiseWithCategoryDto">
+        <id property="id" column="id"/>
+        <result property="groupId" column="group_id"/>
+        <result property="cateId" column="cate_id"/>
+        <result property="cost" column="cost"/>
+        <result property="price" column="price"/>
+        <result property="imei" column="imei"/>
+        <result property="sold" column="sold"/>
+        <result property="createdAt" column="created_at"/>
+        <association property="category" javaType="top.flyingjack.cashier.entity.Category" notNullColumn="c_id">
+            <id property="id" column="c_id"/>
+            <result property="groupId" column="c_group_id"/>
+            <result property="parentId" column="c_parent_id"/>
+            <result property="name" column="c_name"/>
+        </association>
+    </resultMap>
+
+    <select id="findByGroupPaged" resultMap="merchandiseWithCategoryMap">
+        SELECT m.id, m.group_id, m.cate_id, m.cost, m.price, m.imei, m.sold, m.created_at,
+               c.id AS c_id, c.group_id AS c_group_id, c.parent_id AS c_parent_id, c.name AS c_name
+        FROM wms_merchandise m
+        LEFT JOIN wms_category c ON c.id = m.cate_id
+        WHERE m.group_id = #{groupId} AND m.sold = #{sold}
+        ORDER BY m.created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 

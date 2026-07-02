@@ -16,12 +16,50 @@
         </foreach>
     </insert>
 
-    <select id="findByGroupAndDateRange" resultType="top.flyingjack.cashier.entity.Order">
-        SELECT id, group_id, me_id, selling_price, selling_time, remark, is_returned AS returned
-        FROM wms_order
+    <select id="countByGroupAndDateRange" resultType="int">
+        SELECT COUNT(*) FROM wms_order
         WHERE group_id = #{groupId}
           AND selling_time BETWEEN #{start} AND #{end}
-        ORDER BY selling_time DESC
+    </select>
+
+    <resultMap id="orderListItemMap" type="top.flyingjack.cashier.entity.OrderListItemDto">
+        <id property="id" column="id"/>
+        <result property="groupId" column="group_id"/>
+        <result property="meId" column="me_id"/>
+        <result property="sellingPrice" column="selling_price"/>
+        <result property="sellingTime" column="selling_time"/>
+        <result property="remark" column="remark"/>
+        <result property="returned" column="returned"/>
+        <association property="merchandise" javaType="top.flyingjack.cashier.entity.MerchandiseWithCategoryDto" notNullColumn="m_id">
+            <id property="id" column="m_id"/>
+            <result property="groupId" column="m_group_id"/>
+            <result property="cateId" column="m_cate_id"/>
+            <result property="cost" column="m_cost"/>
+            <result property="price" column="m_price"/>
+            <result property="imei" column="m_imei"/>
+            <result property="sold" column="m_sold"/>
+            <result property="createdAt" column="m_created_at"/>
+            <association property="category" javaType="top.flyingjack.cashier.entity.Category" notNullColumn="c_id">
+                <id property="id" column="c_id"/>
+                <result property="groupId" column="c_group_id"/>
+                <result property="parentId" column="c_parent_id"/>
+                <result property="name" column="c_name"/>
+            </association>
+        </association>
+    </resultMap>
+
+    <select id="findByGroupAndDateRangePaged" resultMap="orderListItemMap">
+        SELECT o.id, o.group_id, o.me_id, o.selling_price, o.selling_time, o.remark, o.is_returned AS returned,
+               m.id AS m_id, m.group_id AS m_group_id, m.cate_id AS m_cate_id, m.cost AS m_cost,
+               m.price AS m_price, m.imei AS m_imei, m.sold AS m_sold, m.created_at AS m_created_at,
+               c.id AS c_id, c.group_id AS c_group_id, c.parent_id AS c_parent_id, c.name AS c_name
+        FROM wms_order o
+        LEFT JOIN wms_merchandise m ON m.id = o.me_id AND m.group_id = o.group_id
+        LEFT JOIN wms_category c ON c.id = m.cate_id
+        WHERE o.group_id = #{groupId}
+          AND o.selling_time BETWEEN #{start} AND #{end}
+        ORDER BY o.selling_time DESC
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <update id="markReturned">
