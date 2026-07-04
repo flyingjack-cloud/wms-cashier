@@ -1,6 +1,14 @@
 server:
   port: 8081
 
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          auth-service:
+            url: http://auth-service
+
 logging:
   level:
     root: INFO
