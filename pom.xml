@@ -7,11 +7,13 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
     <artifactId>wms-cashier</artifactId>
+    <version>1.0.0-rc</version>
 
     <dependencies>
         <dependency>
             <groupId>top.flyingjack</groupId>
             <artifactId>common-lib</artifactId>
+            <version>1.0.0</version>
         </dependency>
 
         <dependency>
