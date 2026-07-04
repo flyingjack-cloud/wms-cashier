@@ -66,4 +66,8 @@
         UPDATE wms_order SET is_returned = TRUE WHERE id = #{id} AND group_id = #{groupId}
     </update>
 
+    <select id="findMeIdById" resultType="java.lang.Integer">
+        SELECT me_id FROM wms_order WHERE id = #{id} AND group_id = #{groupId}
+    </select>
+
 </mapper>

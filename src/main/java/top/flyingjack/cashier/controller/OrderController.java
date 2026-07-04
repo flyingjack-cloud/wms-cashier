@@ -24,9 +24,9 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<ApiRes<Integer>> createOrder(
             @RequestParam("me_id") int meId, @RequestParam("selling_price") BigDecimal sellingPrice,
-            @RequestParam(value = "selling_time", required = false) Long sellingTime,
+            @RequestParam(value = "selling_time", required = false) Instant sellingTime,
             @RequestParam String remark) {
-        Instant time = sellingTime != null ? Instant.ofEpochMilli(sellingTime) : Instant.now();
+        Instant time = sellingTime != null ? sellingTime : Instant.now();
         int id = orderService.insertOrder(meId, sellingPrice, remark, time);
         return ResponseEntity.ok(ApiRes.success(id));
     }
@@ -39,17 +39,15 @@ public class OrderController {
 
     @GetMapping("/range")
     public ResponseEntity<ApiRes<Map<String, Object>>> getOrdersByDateRange(
-            @RequestParam long start, @RequestParam long end,
+            @RequestParam Instant start, @RequestParam Instant end,
             @RequestParam int limit, @RequestParam int offset) {
         if (limit > 999 || limit <= 0 || offset < 0) {
             return ResponseEntity.badRequest().body(ApiRes.fail(org.springframework.http.HttpStatus.BAD_REQUEST));
         }
-        Instant startTime = Instant.ofEpochMilli(start);
-        Instant endTime = Instant.ofEpochMilli(end);
-        int count = orderService.getOrderCount(startTime, endTime);
+        int count = orderService.getOrderCount(start, end);
         Map<String, Object> data = new HashMap<>();
         data.put("count", count);
-        data.put("orders", orderService.getOrdersByPage(limit, offset, startTime, endTime));
+        data.put("orders", orderService.getOrdersByPage(limit, offset, start, end));
         return ResponseEntity.ok(ApiRes.success(data));
     }
 

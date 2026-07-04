@@ -4,6 +4,14 @@ Base URL (dev): `http://localhost:8086`
 
 All endpoints require a valid JWT Bearer token (`Authorization: Bearer <token>`) unless noted otherwise.
 
+## Timestamps
+
+All timestamps — in query/form params, JSON request bodies, and responses alike — are an **ISO-8601 string with a `Z` suffix** (e.g. `"2025-01-01T00:00:00Z"`), denoting UTC (zero offset). This is symmetric in every direction: a field looks the same whether you're sending it or receiving it, and whether it's a query param (e.g. `GET /order/range?start=2025-01-01T00:00:00Z`) or a JSON body field (e.g. `POST /order/batch`'s `sellingTime`).
+
+The backend stores and handles time exclusively as `Instant` — a single, timezone-free point on the UTC timeline. There is no offset/timezone concept anywhere in this API; converting to a user's local time is entirely the frontend's responsibility.
+
+Never send an offset-less local string (e.g. `"2025-01-01T00:00:00"`, no `Z`/offset) in a JSON body — it's rejected outright since it can't be resolved to an unambiguous instant. A bare epoch number in a JSON body is **not** rejected, but don't send one: Jackson silently parses it as epoch *seconds* rather than milliseconds, producing the wrong instant (this is exactly the bug that prompted this convention). Query/form params are more lenient purely as a side effect of the framework: a bare number there *is* still accepted, and correctly treated as epoch *milliseconds*, for backward compatibility with older clients — but ISO-8601 is the canonical, documented format going forward; new code should always send strings in both places.
+
 All responses use the unified wrapper:
 ```json
 {
@@ -13,71 +21,6 @@ All responses use the unified wrapper:
   "timestamp": "2025-01-01T00:00:00Z"
 }
 ```
-
-Timestamps in request params are **epoch milliseconds**. Timestamps in responses are **ISO-8601 UTC** strings.
-
----
-
-## OAuth `/oauth`
-
-这三个端点**不需要** Bearer token，专门用于完成 OAuth 2.0 PKCE 授权码回调、token 刷新和登出。  
-服务端用 `WMS_SESSION` httpOnly cookie（7 天有效期）在 Redis 中维护会话，前端无需感知 refresh token。
-
-### POST `/oauth/callback`
-用授权码 + PKCE verifier 换取 access token，建立服务端会话。
-
-| | |
-|---|---|
-| Auth | 无 |
-| Content-Type | `application/json` |
-
-**Request body**
-```json
-{ "code": "auth-code-from-uac", "code_verifier": "pkce-verifier" }
-```
-
-**Response** `data: TokenResult`
-```json
-{ "access_token": "eyJ...", "expires_in": 7200 }
-```
-
-同时在响应中设置 `WMS_SESSION` httpOnly cookie（maxAge = 604800 s）。
-
-**Error**
-- `401` — 授权码无效或已过期（`error.security.authenticated.default`）
-
----
-
-### POST `/oauth/refresh`
-用 `WMS_SESSION` cookie 刷新 access token（refresh token 对前端透明）。
-
-| | |
-|---|---|
-| Auth | 无（依赖 WMS_SESSION cookie）|
-
-**Response** `data: TokenResult`
-```json
-{ "access_token": "eyJ...", "expires_in": 7200 }
-```
-
-同时重置 `WMS_SESSION` cookie 有效期（maxAge = 604800 s）。
-
-**Error**
-- `401` — 无 cookie、会话不存在或 refresh token 已过期
-
----
-
-### POST `/oauth/logout`
-清除服务端会话并清除 cookie。
-
-| | |
-|---|---|
-| Auth | 无（依赖 WMS_SESSION cookie，可选）|
-
-**Response** `data: null`
-
-若无 cookie 也返回 200，不报错。  
-响应中通过 `maxAge=0` 清除 `WMS_SESSION` cookie。
 
 ---
 
@@ -156,7 +99,7 @@ Create a new group (store).
 | | |
 |---|---|
 | Auth | Required |
-| Params | `storeName: string`, `address?: string`, `contact?: string`, `createTime?: long (epoch ms)` |
+| Params | `storeName: string`, `address?: string`, `contact?: string`, `createTime?: string (ISO-8601 UTC)` |
 
 **Response** `data: null`
 
@@ -334,7 +277,7 @@ Get paginated merchandise list.
 | | |
 |---|---|
 | Auth | Required |
-| Params | `sold: boolean`, `limit: int (1–999)`, `offset: int (≥0)` |
+| Params | `sold?: boolean (default false)`, `limit: int (1–999)`, `offset: int (≥0)` |
 
 **Response** `data: { count: int, merchandise: MerchandiseWithCategoryDto[] }` — each item is a `Merchandise` plus a nested `category` object (`null` if the category was since deleted)
 ```json
@@ -352,12 +295,12 @@ Get paginated merchandise list.
 ---
 
 ### GET `/merchandise/cate`
-Get all merchandise under a category.
+Get merchandise under a category.
 
 | | |
 |---|---|
 | Auth | Required |
-| Params | `cate_id: int` |
+| Params | `cate_id: int`, `sold?: boolean (default false)` |
 
 **Response** `data: Merchandise[]`
 
@@ -369,7 +312,7 @@ Add merchandise (supports batch via IMEI list).
 | | |
 |---|---|
 | Auth | Required |
-| Params | `cate_id: int`, `cost: decimal`, `price: decimal`, `imei_list: string[]`, `create_time: long (epoch ms)` |
+| Params | `cate_id: int`, `cost: decimal`, `price: decimal`, `imei_list: string[]`, `create_time: string (ISO-8601 UTC)` |
 
 **Response** `data: null`
 
@@ -406,9 +349,9 @@ Full-text search merchandise by IMEI or other fields.
 | | |
 |---|---|
 | Auth | Required |
-| Params | `text: string`, `sold: boolean` |
+| Params | `text: string`, `sold?: boolean (default false)` |
 
-**Response** `data: Merchandise[]`
+**Response** `data: MerchandiseWithCategoryDto[]` — each item is a `Merchandise` plus a nested `category` object (`null` if the category was since deleted)
 
 ---
 
@@ -440,19 +383,21 @@ Get the latest notice of a given type.
 ## Order `/order`
 
 ### POST `/order`
-Create a single order.
+Create a single order. Marks the referenced merchandise as `sold`.
 
 | | |
 |---|---|
 | Auth | Required |
-| Params | `me_id: int`, `selling_price: decimal`, `selling_time?: long (epoch ms)`, `remark: string` |
+| Params | `me_id: int`, `selling_price: decimal`, `selling_time?: string (ISO-8601 UTC)`, `remark: string` |
 
 **Response** `data: int` — new order ID
+
+**Errors** `400` — `me_id` doesn't reference an existing merchandise in the current group, or that merchandise is already `sold`
 
 ---
 
 ### POST `/order/batch`
-Batch create orders.
+Batch create orders. Marks each referenced merchandise as `sold`.
 
 | | |
 |---|---|
@@ -474,6 +419,8 @@ Batch create orders.
 
 **Response** `data: null`
 
+**Errors** `400` — any order's `meId` doesn't reference an existing merchandise in the current group, that merchandise is already `sold`, or the same `meId` appears more than once in the batch
+
 ---
 
 ### GET `/order/range`
@@ -482,7 +429,7 @@ Get paginated orders within a time range.
 | | |
 |---|---|
 | Auth | Required |
-| Params | `start: long (epoch ms)`, `end: long (epoch ms)`, `limit: int (1–999)`, `offset: int (≥0)` |
+| Params | `start: string (ISO-8601 UTC)`, `end: string (ISO-8601 UTC)`, `limit: int (1–999)`, `offset: int (≥0)` |
 
 **Response** `data: { count: int, orders: OrderListItemDto[] }` — each item is an `Order` plus a nested `merchandise` object (`null` if the merchandise record was since deleted), which itself nests a `category` object (`null` if the category was since deleted)
 ```json
@@ -503,7 +450,7 @@ Get paginated orders within a time range.
 ---
 
 ### PUT `/order/return/{id}`
-Mark an order as returned.
+Mark an order as returned. Marks the referenced merchandise as not `sold` again.
 
 | | |
 |---|---|
@@ -511,6 +458,8 @@ Mark an order as returned.
 | Path | `id: int` |
 
 **Response** `data: null`
+
+**Errors** `400` — `id` doesn't reference an existing order in the current group
 
 ---
 

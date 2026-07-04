@@ -13,8 +13,11 @@ public interface MerchandiseMapper {
     int countByGroupAndSold(@Param("groupId") int groupId, @Param("sold") boolean sold);
     List<MerchandiseWithCategoryDto> findByGroupPaged(@Param("groupId") int groupId, @Param("sold") boolean sold,
                                        @Param("limit") int limit, @Param("offset") int offset);
-    List<Merchandise> findByCateId(@Param("groupId") int groupId, @Param("cateId") int cateId);
-    List<Merchandise> searchByGroupAndText(@Param("groupId") int groupId,
+    List<Merchandise> findByCateId(@Param("groupId") int groupId, @Param("cateId") int cateId,
+                                    @Param("sold") boolean sold);
+    Merchandise findById(@Param("id") int id, @Param("groupId") int groupId);
+    void updateSoldStatus(@Param("id") int id, @Param("groupId") int groupId, @Param("sold") boolean sold);
+    List<MerchandiseWithCategoryDto> searchByGroupAndText(@Param("groupId") int groupId,
                                            @Param("text") String text, @Param("sold") boolean sold);
     void insert(Merchandise merchandise);
     void update(@Param("id") int id, @Param("cost") java.math.BigDecimal cost,

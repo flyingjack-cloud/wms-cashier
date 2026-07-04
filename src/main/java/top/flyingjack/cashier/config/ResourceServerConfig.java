@@ -2,7 +2,6 @@ package top.flyingjack.cashier.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
@@ -24,18 +23,6 @@ public class ResourceServerConfig {
     }
 
     @Bean
-    @Order(2)
-    public SecurityFilterChain oauthFilterChain(HttpSecurity http) throws Exception {
-        http
-            .securityMatcher("/oauth/**")
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        return http.build();
-    }
-
-    @Bean
-    @Order(3)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())

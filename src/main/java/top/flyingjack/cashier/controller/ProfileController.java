@@ -2,6 +2,7 @@ package top.flyingjack.cashier.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import top.flyingjack.cashier.entity.WmsUserProfile;
 import top.flyingjack.cashier.service.AuthorityService;
 import top.flyingjack.cashier.service.ProfileService;
 import top.flyingjack.common.dto.ApiRes;
@@ -28,6 +29,11 @@ public class ProfileController {
     @GetMapping("/permissions")
     public ResponseEntity<ApiRes<List<String>>> getPermissions() {
         return ResponseEntity.ok(ApiRes.success(authorityService.getPermissions()));
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<ApiRes<WmsUserProfile>> getProfile() {
+        return ResponseEntity.ok(ApiRes.success(profileService.getProfile()));
     }
 
     @PutMapping("/nickname")

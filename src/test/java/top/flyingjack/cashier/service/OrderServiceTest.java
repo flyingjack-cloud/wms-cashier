@@ -6,6 +6,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import top.flyingjack.cashier.entity.Category;
+import top.flyingjack.cashier.entity.Merchandise;
 import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 import top.flyingjack.cashier.entity.Order;
 import top.flyingjack.cashier.entity.OrderListItemDto;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,11 +29,20 @@ class OrderServiceTest {
 
     @Mock OrderMapper orderMapper;
     @Mock WmsSecurityContext securityContext;
+    @Mock MerchandiseService merchandiseService;
     @InjectMocks OrderService orderService;
+
+    private static Merchandise merchandise(int id, boolean sold) {
+        Merchandise m = new Merchandise();
+        m.setId(id);
+        m.setSold(sold);
+        return m;
+    }
 
     @Test
     void insertOrder_returnsGeneratedId() {
         when(securityContext.currentGroupId()).thenReturn(1);
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, false));
         doAnswer(inv -> {
             Order o = inv.getArgument(0);
             o.setId(42);
@@ -44,10 +55,145 @@ class OrderServiceTest {
     }
 
     @Test
+    void insertOrder_marksMerchandiseSold() {
+        when(securityContext.currentGroupId()).thenReturn(1);
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, false));
+
+        orderService.insertOrder(10, new BigDecimal("999"), "测试备注", Instant.now());
+
+        verify(merchandiseService).markSold(10, true);
+    }
+
+    @Test
+    void insertOrder_rejectsAlreadySoldMerchandise() {
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, true));
+
+        assertThatThrownBy(() -> orderService.insertOrder(10, new BigDecimal("999"), "测试备注", Instant.now()))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(orderMapper, never()).insert(any());
+    }
+
+    @Test
+    void insertOrder_rejectsUnknownMerchandise() {
+        when(merchandiseService.findById(10)).thenReturn(null);
+
+        assertThatThrownBy(() -> orderService.insertOrder(10, new BigDecimal("999"), "测试备注", Instant.now()))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(orderMapper, never()).insert(any());
+    }
+
+    @Test
+    void insertOrderBatch_setsGroupIdAndInsertsValidOrders() {
+        when(securityContext.currentGroupId()).thenReturn(5);
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, false));
+        Order order = new Order();
+        order.setMeId(10);
+        order.setSellingPrice(new BigDecimal("100"));
+        order.setSellingTime(Instant.now());
+        order.setRemark("test");
+
+        orderService.insertOrderBatch(List.of(order));
+
+        assertThat(order.getGroupId()).isEqualTo(5);
+        verify(orderMapper).insertBatch(List.of(order));
+    }
+
+    @Test
+    void insertOrderBatch_marksAllMerchandiseSold() {
+        when(securityContext.currentGroupId()).thenReturn(5);
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, false));
+        when(merchandiseService.findById(11)).thenReturn(merchandise(11, false));
+        Order order1 = new Order();
+        order1.setMeId(10);
+        order1.setSellingPrice(new BigDecimal("100"));
+        order1.setSellingTime(Instant.now());
+        order1.setRemark("test");
+        Order order2 = new Order();
+        order2.setMeId(11);
+        order2.setSellingPrice(new BigDecimal("100"));
+        order2.setSellingTime(Instant.now());
+        order2.setRemark("test");
+
+        orderService.insertOrderBatch(List.of(order1, order2));
+
+        verify(merchandiseService).markSold(10, true);
+        verify(merchandiseService).markSold(11, true);
+    }
+
+    @Test
+    void insertOrderBatch_rejectsDuplicateMeIdWithinBatch() {
+        Order order1 = new Order();
+        order1.setMeId(10);
+        order1.setSellingPrice(new BigDecimal("100"));
+        order1.setSellingTime(Instant.now());
+        order1.setRemark("test");
+        Order order2 = new Order();
+        order2.setMeId(10);
+        order2.setSellingPrice(new BigDecimal("100"));
+        order2.setSellingTime(Instant.now());
+        order2.setRemark("test");
+
+        assertThatThrownBy(() -> orderService.insertOrderBatch(List.of(order1, order2)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(orderMapper, never()).insertBatch(any());
+    }
+
+    @Test
+    void insertOrderBatch_rejectsAlreadySoldMerchandise() {
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, true));
+        Order order = new Order();
+        order.setMeId(10);
+        order.setSellingPrice(new BigDecimal("100"));
+        order.setSellingTime(Instant.now());
+        order.setRemark("test");
+
+        assertThatThrownBy(() -> orderService.insertOrderBatch(List.of(order)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(orderMapper, never()).insertBatch(any());
+    }
+
+    @Test
+    void insertOrderBatch_rejectsUnreasonableSellingTime() {
+        Order order = new Order();
+        order.setMeId(10);
+        order.setSellingPrice(new BigDecimal("100"));
+        // corrupted value matching the real-world bug: epoch-ms number misparsed as epoch-seconds
+        order.setSellingTime(Instant.ofEpochSecond(1783077681491L));
+        order.setRemark("test");
+
+        assertThatThrownBy(() -> orderService.insertOrderBatch(List.of(order)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(orderMapper, never()).insertBatch(any());
+    }
+
+    @Test
     void returnOrder_setsReturnedFlag() {
         when(securityContext.currentGroupId()).thenReturn(1);
+        when(orderMapper.findMeIdById(1, 1)).thenReturn(99);
+
         orderService.returnOrder(1);
+
         verify(orderMapper).markReturned(eq(1), anyInt());
+    }
+
+    @Test
+    void returnOrder_marksMerchandiseUnsold() {
+        when(securityContext.currentGroupId()).thenReturn(1);
+        when(orderMapper.findMeIdById(1, 1)).thenReturn(99);
+
+        orderService.returnOrder(1);
+
+        verify(merchandiseService).markSold(99, false);
+    }
+
+    @Test
+    void returnOrder_rejectsUnknownOrder() {
+        when(securityContext.currentGroupId()).thenReturn(1);
+        when(orderMapper.findMeIdById(1, 1)).thenReturn(null);
+
+        assertThatThrownBy(() -> orderService.returnOrder(1))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(orderMapper, never()).markReturned(anyInt(), anyInt());
     }
 
     @Test

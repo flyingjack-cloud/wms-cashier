@@ -34,8 +34,8 @@ public class GroupController {
             @RequestParam String storeName,
             @RequestParam(required = false) String address,
             @RequestParam(required = false) String contact,
-            @RequestParam(required = false) Long createTime) {
-        Instant time = createTime != null ? Instant.ofEpochMilli(createTime) : Instant.now();
+            @RequestParam(required = false) Instant createTime) {
+        Instant time = createTime != null ? createTime : Instant.now();
         groupService.createGroup(storeName, address, contact, time);
         return ResponseEntity.ok(ApiRes.success());
     }

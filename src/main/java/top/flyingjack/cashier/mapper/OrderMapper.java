@@ -21,4 +21,5 @@ public interface OrderMapper {
                                              @Param("limit") int limit,
                                              @Param("offset") int offset);
     void markReturned(@Param("id") int id, @Param("groupId") int groupId);
+    Integer findMeIdById(@Param("id") int id, @Param("groupId") int groupId);
 }

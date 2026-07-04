@@ -18,7 +18,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${AUTH_ISSUER_URI:http://localhost:9001}/oauth2/jwks
+          issuer-uri: ${AUTH_ISSUER_URI:http://localhost:9001}
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
@@ -34,14 +34,3 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
-
-auth:
-  issuer-uri: ${AUTH_ISSUER_URI:http://localhost:9001}
-
-wms:
-  oauth:
-    auth-service-uri: ${AUTH_SERVICE_URI:http://localhost:9001}
-    client-id: ${OAUTH2_CLIENT_ID:sample-client}
-    redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:4300/callback}
-    session:
-      cookie-secure: ${SESSION_COOKIE_SECURE:false}

@@ -242,4 +242,113 @@ class WmsCashierIntegrationTest extends BaseContainerTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getCategory()).isNull();
     }
+
+    @Test
+    void searchByGroupAndText_nestsCategory() {
+        Category category = new Category();
+        category.setGroupId(783);
+        category.setParentId(0);
+        category.setName("笔记本");
+        categoryMapper.insert(category);
+
+        Merchandise merchandise = new Merchandise();
+        merchandise.setGroupId(783);
+        merchandise.setCateId(category.getId());
+        merchandise.setCost(new BigDecimal("100.00"));
+        merchandise.setPrice(new BigDecimal("150.00"));
+        merchandise.setImei("IMEI-SEARCH-001");
+        merchandise.setSold(false);
+        merchandise.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(merchandise);
+
+        List<MerchandiseWithCategoryDto> result =
+                merchandiseMapper.searchByGroupAndText(783, "SEARCH", false);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCategory()).isNotNull();
+        assertThat(result.get(0).getCategory().getName()).isEqualTo("笔记本");
+    }
+
+    @Test
+    void merchandiseFindById_returnsRowScopedToGroup() {
+        Merchandise merchandise = new Merchandise();
+        merchandise.setGroupId(784);
+        merchandise.setCateId(1);
+        merchandise.setCost(new BigDecimal("100.00"));
+        merchandise.setPrice(new BigDecimal("150.00"));
+        merchandise.setImei("IMEI-FINDBYID-001");
+        merchandise.setSold(false);
+        merchandise.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(merchandise);
+
+        assertThat(merchandiseMapper.findById(merchandise.getId(), 784)).isNotNull();
+        assertThat(merchandiseMapper.findById(merchandise.getId(), 999)).isNull();
+    }
+
+    @Test
+    void merchandiseUpdateSoldStatus_flipsFlagScopedToGroup() {
+        Merchandise merchandise = new Merchandise();
+        merchandise.setGroupId(785);
+        merchandise.setCateId(1);
+        merchandise.setCost(new BigDecimal("100.00"));
+        merchandise.setPrice(new BigDecimal("150.00"));
+        merchandise.setImei("IMEI-SOLDFLAG-001");
+        merchandise.setSold(false);
+        merchandise.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(merchandise);
+
+        merchandiseMapper.updateSoldStatus(merchandise.getId(), 785, true);
+
+        assertThat(merchandiseMapper.findById(merchandise.getId(), 785).isSold()).isTrue();
+    }
+
+    @Test
+    void orderFindMeIdById_returnsMeIdScopedToGroup() {
+        Order order = new Order();
+        order.setGroupId(786);
+        order.setMeId(555);
+        order.setSellingPrice(new BigDecimal("150.00"));
+        order.setSellingTime(Instant.now());
+        order.setRemark("测试");
+        order.setReturned(false);
+        orderMapper.insert(order);
+
+        assertThat(orderMapper.findMeIdById(order.getId(), 786)).isEqualTo(555);
+        assertThat(orderMapper.findMeIdById(order.getId(), 999)).isNull();
+    }
+
+    @Test
+    void merchandiseFindByCateId_excludesSoldItemsByDefault() {
+        Category category = new Category();
+        category.setGroupId(787);
+        category.setParentId(0);
+        category.setName("配件");
+        categoryMapper.insert(category);
+
+        Merchandise unsold = new Merchandise();
+        unsold.setGroupId(787);
+        unsold.setCateId(category.getId());
+        unsold.setCost(new BigDecimal("100.00"));
+        unsold.setPrice(new BigDecimal("150.00"));
+        unsold.setImei("IMEI-CATE-UNSOLD");
+        unsold.setSold(false);
+        unsold.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(unsold);
+
+        Merchandise sold = new Merchandise();
+        sold.setGroupId(787);
+        sold.setCateId(category.getId());
+        sold.setCost(new BigDecimal("100.00"));
+        sold.setPrice(new BigDecimal("150.00"));
+        sold.setImei("IMEI-CATE-SOLD");
+        sold.setSold(true);
+        sold.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(sold);
+
+        List<Merchandise> unsoldResults = merchandiseMapper.findByCateId(787, category.getId(), false);
+        assertThat(unsoldResults).extracting(Merchandise::getImei).containsExactly("IMEI-CATE-UNSOLD");
+
+        List<Merchandise> soldResults = merchandiseMapper.findByCateId(787, category.getId(), true);
+        assertThat(soldResults).extracting(Merchandise::getImei).containsExactly("IMEI-CATE-SOLD");
+    }
 }

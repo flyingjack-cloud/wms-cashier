@@ -38,14 +38,27 @@
     <select id="findByCateId" resultType="top.flyingjack.cashier.entity.Merchandise">
         SELECT id, group_id, cate_id, cost, price, imei, sold, created_at
         FROM wms_merchandise
-        WHERE group_id = #{groupId} AND cate_id = #{cateId}
+        WHERE group_id = #{groupId} AND cate_id = #{cateId} AND sold = #{sold}
     </select>
 
-    <select id="searchByGroupAndText" resultType="top.flyingjack.cashier.entity.Merchandise">
+    <select id="findById" resultType="top.flyingjack.cashier.entity.Merchandise">
         SELECT id, group_id, cate_id, cost, price, imei, sold, created_at
         FROM wms_merchandise
-        WHERE group_id = #{groupId} AND sold = #{sold}
-          AND (imei ILIKE CONCAT('%', #{text}, '%'))
+        WHERE id = #{id} AND group_id = #{groupId}
+    </select>
+
+    <update id="updateSoldStatus">
+        UPDATE wms_merchandise SET sold = #{sold}
+        WHERE id = #{id} AND group_id = #{groupId}
+    </update>
+
+    <select id="searchByGroupAndText" resultMap="merchandiseWithCategoryMap">
+        SELECT m.id, m.group_id, m.cate_id, m.cost, m.price, m.imei, m.sold, m.created_at,
+               c.id AS c_id, c.group_id AS c_group_id, c.parent_id AS c_parent_id, c.name AS c_name
+        FROM wms_merchandise m
+        LEFT JOIN wms_category c ON c.id = m.cate_id
+        WHERE m.group_id = #{groupId} AND m.sold = #{sold}
+          AND (m.imei ILIKE CONCAT('%', #{text}, '%'))
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
