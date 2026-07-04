@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import top.flyingjack.cashier.entity.MeCount;
 import top.flyingjack.cashier.entity.Merchandise;
+import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 import top.flyingjack.cashier.mapper.MerchandiseMapper;
 import top.flyingjack.cashier.security.WmsSecurityContext;
 
@@ -25,15 +26,23 @@ public class MerchandiseService {
         return merchandiseMapper.countByGroupAndSold(securityContext.currentGroupId(), sold);
     }
 
-    public List<Merchandise> getMerchandiseByPage(int limit, int offset, boolean sold) {
+    public List<MerchandiseWithCategoryDto> getMerchandiseByPage(int limit, int offset, boolean sold) {
         return merchandiseMapper.findByGroupPaged(securityContext.currentGroupId(), sold, limit, offset);
     }
 
-    public List<Merchandise> getMerchandiseByCateId(int cateId) {
-        return merchandiseMapper.findByCateId(securityContext.currentGroupId(), cateId);
+    public List<Merchandise> getMerchandiseByCateId(int cateId, boolean sold) {
+        return merchandiseMapper.findByCateId(securityContext.currentGroupId(), cateId, sold);
     }
 
-    public List<Merchandise> searchMerchandise(String text, boolean sold) {
+    public Merchandise findById(int id) {
+        return merchandiseMapper.findById(id, securityContext.currentGroupId());
+    }
+
+    public void markSold(int id, boolean sold) {
+        merchandiseMapper.updateSoldStatus(id, securityContext.currentGroupId(), sold);
+    }
+
+    public List<MerchandiseWithCategoryDto> searchMerchandise(String text, boolean sold) {
         return merchandiseMapper.searchByGroupAndText(securityContext.currentGroupId(), text, sold);
     }
 

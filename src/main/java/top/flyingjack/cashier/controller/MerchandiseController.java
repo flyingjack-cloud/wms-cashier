@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import top.flyingjack.cashier.entity.MeCount;
 import top.flyingjack.cashier.entity.Merchandise;
+import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 import top.flyingjack.cashier.service.MerchandiseService;
 import top.flyingjack.common.dto.ApiRes;
 
@@ -22,32 +23,32 @@ public class MerchandiseController {
         this.merchandiseService = merchandiseService;
     }
 
-    @GetMapping("/")
+    @GetMapping
     public ResponseEntity<ApiRes<Map<String, Object>>> getMerchandise(
-            @RequestParam boolean sold, @RequestParam int limit, @RequestParam int offset) {
+            @RequestParam(defaultValue = "false") boolean sold,
+            @RequestParam int limit, @RequestParam int offset) {
         if (limit > 999 || limit <= 0 || offset < 0) {
             return ResponseEntity.badRequest().body(ApiRes.fail(org.springframework.http.HttpStatus.BAD_REQUEST));
         }
         int count = merchandiseService.getMerchandiseCount(sold);
-        int effectiveLimit = Math.min(limit, count);
         Map<String, Object> data = new HashMap<>();
         data.put("count", count);
-        data.put("merchandise", merchandiseService.getMerchandiseByPage(effectiveLimit, offset, sold));
+        data.put("merchandise", merchandiseService.getMerchandiseByPage(limit, offset, sold));
         return ResponseEntity.ok(ApiRes.success(data));
     }
 
     @GetMapping("/cate")
-    public ResponseEntity<ApiRes<List<Merchandise>>> getMerchandiseByCateId(@RequestParam("cate_id") int cateId) {
-        return ResponseEntity.ok(ApiRes.success(merchandiseService.getMerchandiseByCateId(cateId)));
+    public ResponseEntity<ApiRes<List<Merchandise>>> getMerchandiseByCateId(
+            @RequestParam("cate_id") int cateId, @RequestParam(defaultValue = "false") boolean sold) {
+        return ResponseEntity.ok(ApiRes.success(merchandiseService.getMerchandiseByCateId(cateId, sold)));
     }
 
-    @PostMapping("/")
+    @PostMapping
     public ResponseEntity<ApiRes<Void>> insertMerchandise(
             @RequestParam("cate_id") int cateId, @RequestParam BigDecimal cost,
             @RequestParam BigDecimal price, @RequestParam("imei_list") List<String> imeiList,
-            @RequestParam("create_time") long createTime) {
-        merchandiseService.insertMerchandise(cateId, cost, price, imeiList,
-                Instant.ofEpochMilli(createTime));
+            @RequestParam("create_time") Instant createTime) {
+        merchandiseService.insertMerchandise(cateId, cost, price, imeiList, createTime);
         return ResponseEntity.ok(ApiRes.success());
     }
 
@@ -65,8 +66,8 @@ public class MerchandiseController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ApiRes<List<Merchandise>>> search(
-            @RequestParam String text, @RequestParam boolean sold) {
+    public ResponseEntity<ApiRes<List<MerchandiseWithCategoryDto>>> search(
+            @RequestParam String text, @RequestParam(defaultValue = "false") boolean sold) {
         return ResponseEntity.ok(ApiRes.success(merchandiseService.searchMerchandise(text, sold)));
     }
 

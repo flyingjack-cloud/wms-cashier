@@ -3,7 +3,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:9999/oauth2/jwks
+          issuer-uri: http://localhost:9999
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml

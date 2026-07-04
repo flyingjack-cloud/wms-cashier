@@ -8,7 +8,9 @@ import top.flyingjack.common.dto.ApiRes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/order")
@@ -19,12 +21,12 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    @PostMapping("/")
+    @PostMapping
     public ResponseEntity<ApiRes<Integer>> createOrder(
             @RequestParam("me_id") int meId, @RequestParam("selling_price") BigDecimal sellingPrice,
-            @RequestParam(value = "selling_time", required = false) Long sellingTime,
+            @RequestParam(value = "selling_time", required = false) Instant sellingTime,
             @RequestParam String remark) {
-        Instant time = sellingTime != null ? Instant.ofEpochMilli(sellingTime) : Instant.now();
+        Instant time = sellingTime != null ? sellingTime : Instant.now();
         int id = orderService.insertOrder(meId, sellingPrice, remark, time);
         return ResponseEntity.ok(ApiRes.success(id));
     }
@@ -36,11 +38,17 @@ public class OrderController {
     }
 
     @GetMapping("/range")
-    public ResponseEntity<ApiRes<List<Order>>> getOrdersByDateRange(
-            @RequestParam long start, @RequestParam long end) {
-        List<Order> orders = orderService.getOrdersByDateRange(
-                Instant.ofEpochMilli(start), Instant.ofEpochMilli(end));
-        return ResponseEntity.ok(ApiRes.success(orders));
+    public ResponseEntity<ApiRes<Map<String, Object>>> getOrdersByDateRange(
+            @RequestParam Instant start, @RequestParam Instant end,
+            @RequestParam int limit, @RequestParam int offset) {
+        if (limit > 999 || limit <= 0 || offset < 0) {
+            return ResponseEntity.badRequest().body(ApiRes.fail(org.springframework.http.HttpStatus.BAD_REQUEST));
+        }
+        int count = orderService.getOrderCount(start, end);
+        Map<String, Object> data = new HashMap<>();
+        data.put("count", count);
+        data.put("orders", orderService.getOrdersByPage(limit, offset, start, end));
+        return ResponseEntity.ok(ApiRes.success(data));
     }
 
     @PutMapping("/return/{id}")

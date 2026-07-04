@@ -1,0 +1,186 @@
+name: WMS Cashier CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths-ignore:
+      - 'k8s/**'
+      - '**.md'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [common-lib-updated]
+
+jobs:
+  build-and-push:
+    runs-on: self-hosted
+
+    steps:
+      # Step 1: 生成 GitHub App 临时 token，用于后续所有私有仓库的访问
+      # repositories 明确列出所有需要访问的仓库（App 必须已安装到这些仓库）
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: flyingjack-cloud
+          repositories: wms-cashier,common-lib,flyingjack-cloud,k8s-gitops
+
+      # Step 2: 先 checkout 根仓库，获得 parent POM 和 mvnw
+      # submodules: false 避免 git 尝试 init 所有子模块
+      - name: Checkout flyingjack-cloud root
+        uses: actions/checkout@v4
+        with:
+          repository: flyingjack-cloud/flyingjack-cloud
+          token: ${{ steps.app-token.outputs.token }}
+          submodules: false
+
+      # Step 3: 解析目标分支和 image tag 后缀
+      # - push/workflow_dispatch：使用当前分支和 service SHA
+      # - repository_dispatch（common-lib 变更）：使用 client_payload 中的分支，tag 后缀为 cl{commonlib-sha}
+      - name: Resolve target ref and image tag
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "ref=${{ github.event.client_payload.ref }}" >> $GITHUB_OUTPUT
+            echo "short_sha=cl${{ github.event.client_payload.common_lib_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "ref=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          fi
+
+      # Step 4: checkout wms-cashier
+      - name: Checkout wms-cashier
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.ref }}
+          path: wms-cashier
+          token: ${{ steps.app-token.outputs.token }}
+
+      # Step 5: checkout common-lib 源码（仅 develop）
+      # develop：跟随 common-lib develop 分支最新 HEAD，checkout 源码 + 本地 install 现装现用
+      # main：common-lib 已经在自己 main 分支的 CI 里 deploy 到 GitHub Packages 了，
+      # wms-cashier 的 pom 里 pin 了具体版本号 + 配了 <repositories> 指向 Packages，
+      # 直接 mvn clean verify 时按版本号解析即可，不需要再 checkout 源码/本地 install
+      - name: Checkout common-lib (develop only)
+        if: steps.target.outputs.ref != 'main'
+        uses: actions/checkout@v4
+        with:
+          repository: flyingjack-cloud/common-lib
+          token: ${{ steps.app-token.outputs.token }}
+          path: common-lib
+          ref: ${{ steps.target.outputs.ref }}
+
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      # Step 5.5: 配置 Maven 访问 GitHub Packages 的凭证（main 分支解析 common-lib 需要）
+      # 注意：GitHub App 安装 token 认证不了 GitHub Packages 的 Maven 注册表，
+      # 而且这里是跨仓库读取 common-lib 的包，内置 GITHUB_TOKEN 也不行（只对本仓库自己的包有效），
+      # 必须用 classic PAT（read:packages），存成 secrets.PACKAGES_TOKEN
+      - name: Configure Maven credentials for GitHub Packages
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.PACKAGES_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      # Step 6: 从分支名推导 Maven profile，image tag 使用前面解析的 short_sha
+      - name: Set build variables
+        run: |
+          if [ "${{ steps.target.outputs.ref }}" = "main" ]; then
+            echo "PROFILE=prod" >> $GITHUB_ENV
+          else
+            echo "PROFILE=beta" >> $GITHUB_ENV
+          fi
+          echo "SHORT_SHA=${{ steps.target.outputs.short_sha }}" >> $GITHUB_ENV
+
+      # Step 7: 安装 common-lib 到本地 Maven 仓库（仅 develop，main 直接从 Packages 解析）
+      # -f 直接指向模块 pom.xml，Maven 只将根 pom 作为 parent 读取，
+      # 不扫描 <modules> 列表，避免缺失的其他子模块导致报错
+      - name: Install common-lib (develop only)
+        if: steps.target.outputs.ref != 'main'
+        run: ./mvnw install -f common-lib/pom.xml -DskipTests -Dspring-boot.repackage.skip=true -q
+
+      # Step 8: 构建并测试 wms-cashier（含 TestContainers，需要 Docker daemon）
+      - name: Build and test wms-cashier
+        run: ./mvnw clean verify -f wms-cashier/pom.xml -P ${{ env.PROFILE }}
+
+      # Step 9: 构建镜像
+      - name: Docker build
+        run: |
+          docker build \
+            -t ${{ secrets.REGISTRY_URL }}/wms-cashier:${{ env.PROFILE }}-${{ env.SHORT_SHA }} \
+            wms-cashier/
+
+      # Step 10: 登录 registry（仅当 REGISTRY_USERNAME 已配置时执行）
+      # 无认证的 registry:2 不需要设置该 secret，此步骤自动跳过
+      - name: Docker login
+        run: |
+          if [ -n "${{ secrets.REGISTRY_USERNAME }}" ]; then
+            echo "${{ secrets.REGISTRY_PASSWORD }}" | \
+              docker login ${{ secrets.REGISTRY_URL }} \
+              -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+          else
+            echo "REGISTRY_USERNAME not set, skipping login (unauthenticated registry)"
+          fi
+
+      # Step 11: 推送镜像
+      - name: Docker push
+        run: |
+          docker push ${{ secrets.REGISTRY_URL }}/wms-cashier:${{ env.PROFILE }}-${{ env.SHORT_SHA }}
+
+      # Step 12: 更新 gitops 仓库镜像 tag，触发 ArgoCD 同步
+      # develop → beta overlay，main → prod overlay
+      # 当前使用 Gitee 作为 gitops 仓库（ArgoCD 国内访问 GitHub 不稳定）
+      # 如需切回 GitHub，注释掉 Gitee 步骤，取消注释 GitHub 步骤
+
+      # ---- Gitee（当前启用）----
+      - name: Update gitops image tag (Gitee)
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          IMAGE: ${{ secrets.REGISTRY_URL }}/wms-cashier:${{ env.PROFILE }}-${{ env.SHORT_SHA }}
+          OVERLAY: wms-cashier/overlays/${{ env.PROFILE }}
+        run: |
+          git clone https://oauth2:${GITEE_TOKEN}@gitee.com/zuminli/k8s-gitops.git
+          cd k8s-gitops
+          sed -i "s|image: .*wms-cashier.*|image: ${IMAGE}|" "${OVERLAY}/deployment-patch.yaml"
+          git config user.email "ci@flyingjack.com"
+          git config user.name "CI Bot"
+          git add "${OVERLAY}/deployment-patch.yaml"
+          if git diff --cached --quiet; then
+            echo "Image tag unchanged, nothing to push"
+          else
+            git commit -m "chore(wms-cashier): update image to ${{ env.PROFILE }}-${{ env.SHORT_SHA }}"
+            git push
+          fi
+
+      # ---- GitHub（备用，切回时取消注释）----
+      # - name: Update gitops image tag (GitHub)
+      #   env:
+      #     GITOPS_TOKEN: ${{ steps.app-token.outputs.token }}
+      #     IMAGE: ${{ secrets.REGISTRY_URL }}/wms-cashier:${{ env.PROFILE }}-${{ env.SHORT_SHA }}
+      #     OVERLAY: wms-cashier/overlays/${{ env.PROFILE }}
+      #   run: |
+      #     git clone https://x-access-token:${GITOPS_TOKEN}@github.com/flyingjack-cloud/k8s-gitops.git
+      #     cd k8s-gitops
+      #     sed -i "s|image: .*wms-cashier.*|image: ${IMAGE}|" "${OVERLAY}/deployment-patch.yaml"
+      #     git config user.email "ci@flyingjack.com"
+      #     git config user.name "CI Bot"
+      #     git add "${OVERLAY}/deployment-patch.yaml"
+      #     if git diff --cached --quiet; then
+      #       echo "Image tag unchanged, nothing to push"
+      #     else
+      #       git commit -m "chore(wms-cashier): update image to ${{ env.PROFILE }}-${{ env.SHORT_SHA }}"
+      #       git push
+      #     fi
