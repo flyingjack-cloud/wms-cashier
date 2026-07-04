@@ -1,6 +1,10 @@
 spring:
   application:
     name: wms-cashier
+  cloud:
+    kubernetes:
+      discovery:
+        enabled: false
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
