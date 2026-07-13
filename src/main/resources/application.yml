@@ -34,3 +34,13 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+
+# 默认只暴露 健康状态和基本信息
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
