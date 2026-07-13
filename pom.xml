@@ -9,6 +9,19 @@
     <artifactId>wms-cashier</artifactId>
     <version>1.0.0-rc</version>
 
+    <properties>
+        <!--
+          Docker Engine 25+ rejects docker-java/Testcontainers' default ping API version (1.32);
+          this daemon enforces a minimum of 1.40. Testcontainers only sends an explicit API
+          version when one is configured (otherwise it falls back to 1.32), and only the
+          Environment/SystemProperty strategy reads it — which requires DOCKER_HOST to be set.
+          Override these on the command line if your Docker socket lives elsewhere, e.g.
+          -Dtestcontainers.docker.host=tcp://host:2375
+        -->
+        <testcontainers.docker.host>unix:///var/run/docker.sock</testcontainers.docker.host>
+        <testcontainers.docker.api-version>1.40</testcontainers.docker.api-version>
+    </properties>
+
     <repositories>
         <repository>
             <id>github</id>
@@ -88,4 +101,25 @@
             <version>2.5.0</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Force an API version >= the daemon minimum so Testcontainers
+                         does not fall back to the unsupported 1.32 ping. DOCKER_HOST makes
+                         the EnvironmentAndSystemPropertyClientProviderStrategy (the one that
+                         honours api.version) applicable. -->
+                    <environmentVariables>
+                        <DOCKER_HOST>${testcontainers.docker.host}</DOCKER_HOST>
+                    </environmentVariables>
+                    <systemPropertyVariables>
+                        <api.version>${testcontainers.docker.api-version}</api.version>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
