@@ -26,7 +26,7 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: flyingjack-cloud
-          repositories: wms-cashier,common-lib,flyingjack-cloud,k8s-gitops
+          repositories: wms-cashier,common-lib,flyingjack-cloud
 
       # Step 2: 先 checkout 根仓库，获得 parent POM 和 mvnw
       # submodules: false 避免 git 尝试 init 所有子模块
