@@ -37,7 +37,7 @@ class OrderExtraServiceTest {
 
     @Test
     void getTemplates_returnsSchemaAsJson() {
-        when(orderExtraMapper.findEnabledTemplates(1)).thenReturn(List.of(template()));
+        when(orderExtraMapper.findTemplates(1, false)).thenReturn(List.of(template()));
 
         List<OrderExtraTemplateDto> result = orderExtraService.getTemplates();
 

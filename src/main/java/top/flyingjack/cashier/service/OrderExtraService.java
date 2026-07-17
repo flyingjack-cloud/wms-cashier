@@ -36,7 +36,7 @@ public class OrderExtraService {
     }
 
     public List<OrderExtraTemplateDto> getTemplates() {
-        return orderExtraMapper.findEnabledTemplates(securityContext.currentGroupId()).stream()
+        return orderExtraMapper.findTemplates(securityContext.currentGroupId(), false).stream()
                 .map(this::toTemplateDto)
                 .toList();
     }
