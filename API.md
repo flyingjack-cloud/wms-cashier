@@ -472,7 +472,8 @@ Get enabled order-extra templates for the current group.
 
 | | |
 |---|---|
-| Auth | Required |
+| Auth | Required; `includeDisabled=true` requires `ROLE_OWNER` |
+| Query | `includeDisabled: boolean` — default `false`. When `true`, also returns disabled templates for admin use |
 
 **Response** `data: OrderExtraTemplateDto[]`
 
@@ -504,6 +505,114 @@ Get one enabled order-extra template by code.
 | Path | `code: string` |
 
 **Response** `data: OrderExtraTemplateDto`
+
+---
+
+### POST `/order-extra/templates`
+Create an order-extra template.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Body | `code: string`, `name: string`, `schema: object` |
+
+```json
+{
+  "code": "invoice",
+  "name": "发票信息",
+  "schema": {
+    "fields": [
+      { "key": "invoiceTitle", "label": "发票抬头", "type": "text", "required": true },
+      { "key": "payMethod", "label": "支付方式", "type": "select",
+        "options": ["现金", "微信", "支付宝"], "required": false }
+    ]
+  }
+}
+```
+
+**Response** `data: OrderExtraTemplateDto` — the created template, `version` starts at `1`.
+
+**Errors** `400` — `code` already exists in the group (use the enable endpoint instead of
+recreating), or the schema fails validation (see "Template schema rules" below)
+
+---
+
+### PUT `/order-extra/templates/{code}`
+Update a template's name and schema. `code` is immutable — it is the key that
+`wms_order_extra` snapshots reference.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Path | `code: string` |
+| Body | `name: string`, `schema: object` |
+
+`version` is incremented **only when the schema actually changes**. Renaming the template alone
+leaves `version` untouched. Comparison is structural, so key order and whitespace differences do
+not trigger a bump.
+
+**Response** `data: OrderExtraTemplateDto` — the updated template, including the resulting `version`
+
+**Errors** `400` — template doesn't exist, or the schema fails validation
+
+---
+
+### DELETE `/order-extra/templates/{code}`
+Disable a template. This is a soft delete: the row is kept with `enabled = false`, and existing
+order-extra data is untouched. Disabled templates are rejected by
+`PUT /order/{orderId}/extra/{templateCode}` and hidden from `GET /order-extra/templates`.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Path | `code: string` |
+
+**Response** `data: null`
+
+**Errors** `400` — template doesn't exist
+
+---
+
+### PUT `/order-extra/templates/{code}/enabled`
+Enable or disable a template.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Path | `code: string` |
+| Body | `enabled: boolean` |
+
+```json
+{ "enabled": true }
+```
+
+**Response** `data: OrderExtraTemplateDto`
+
+**Errors** `400` — template doesn't exist
+
+---
+
+### Template schema rules
+
+A template's `schema` must be an object with a non-empty `fields` array. Each field:
+
+| Key | Required | Notes |
+|---|---|---|
+| `key` | yes | Non-empty, unique within the template |
+| `type` | yes | One of `text`, `textarea`, `number`, `boolean`, `date`, `datetime`, `select` |
+| `label` | no | Display label for the frontend |
+| `required` | no | Defaults to `false` |
+| `options` | only when `type` is `select` | Non-empty array of allowed values |
+
+Payload validation on `PUT /order/{orderId}/extra/{templateCode}`:
+
+- Fields marked `required` must be present and non-blank
+- Values must match the declared `type`
+- For `select` fields, the value must be one of the declared `options` — the frontend dropdown is
+  a UI affordance, not the enforcement point
+- **Fields not declared in the schema are accepted and stored as-is.** This is intentional, not an
+  oversight: the payload is a snapshot. Validation constrains the values of declared fields; it does
+  not restrict which fields may be sent.
 
 ---
 
