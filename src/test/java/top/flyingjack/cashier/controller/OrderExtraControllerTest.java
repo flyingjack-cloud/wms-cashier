@@ -50,6 +50,6 @@ class OrderExtraControllerTest {
         mockMvc.perform(get("/order-extra/templates"))
                 .andExpect(status().isOk());
 
-        verify(orderExtraService).getTemplates();
+        verify(orderExtraService).getTemplates(false);
     }
 }

@@ -20,7 +20,7 @@ public class OrderExtraController {
 
     @GetMapping("/order-extra/templates")
     public ResponseEntity<ApiRes<List<OrderExtraTemplateDto>>> getTemplates() {
-        return ResponseEntity.ok(ApiRes.success(orderExtraService.getTemplates()));
+        return ResponseEntity.ok(ApiRes.success(orderExtraService.getTemplates(false)));
     }
 
     @GetMapping("/order-extra/templates/{code}")

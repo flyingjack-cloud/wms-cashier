@@ -3,6 +3,7 @@ package top.flyingjack.cashier.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -10,6 +11,7 @@ import top.flyingjack.cashier.entity.OrderExtra;
 import top.flyingjack.cashier.entity.OrderExtraDto;
 import top.flyingjack.cashier.entity.OrderExtraTemplate;
 import top.flyingjack.cashier.entity.OrderExtraTemplateDto;
+import top.flyingjack.cashier.entity.OrderExtraTemplateReq;
 import top.flyingjack.cashier.mapper.OrderExtraMapper;
 import top.flyingjack.cashier.mapper.OrderMapper;
 import top.flyingjack.cashier.security.WmsSecurityContext;
@@ -35,8 +37,9 @@ public class OrderExtraService {
         this.schemaValidator = schemaValidator;
     }
 
-    public List<OrderExtraTemplateDto> getTemplates() {
-        return orderExtraMapper.findTemplates(securityContext.currentGroupId(), false).stream()
+    @PreAuthorize("!#includeDisabled or hasRole('OWNER')")
+    public List<OrderExtraTemplateDto> getTemplates(boolean includeDisabled) {
+        return orderExtraMapper.findTemplates(securityContext.currentGroupId(), includeDisabled).stream()
                 .map(this::toTemplateDto)
                 .toList();
     }
@@ -44,6 +47,67 @@ public class OrderExtraService {
     public OrderExtraTemplateDto getTemplate(String code) {
         OrderExtraTemplate template = findTemplate(code);
         return toTemplateDto(template);
+    }
+
+    @PreAuthorize("hasRole('OWNER')")
+    @Transactional
+    public OrderExtraTemplateDto createTemplate(OrderExtraTemplateReq req) {
+        Assert.hasText(req.getCode(), "template code cannot be empty");
+        Assert.hasText(req.getName(), "template name cannot be empty");
+        schemaValidator.validateSchema(req.getSchema());
+        int groupId = securityContext.currentGroupId();
+        Assert.isNull(orderExtraMapper.findTemplateByCode(groupId, req.getCode()),
+                "template already exists: " + req.getCode());
+
+        OrderExtraTemplate template = new OrderExtraTemplate();
+        template.setGroupId(groupId);
+        template.setCode(req.getCode());
+        template.setName(req.getName());
+        template.setVersion(1);
+        template.setSchemaJson(writeJson(req.getSchema()));
+        template.setEnabled(true);
+        orderExtraMapper.insertTemplate(template);
+        return toTemplateDto(template);
+    }
+
+    @PreAuthorize("hasRole('OWNER')")
+    @Transactional
+    public OrderExtraTemplateDto updateTemplate(String code, OrderExtraTemplateReq req) {
+        Assert.hasText(code, "template code cannot be empty");
+        Assert.hasText(req.getName(), "template name cannot be empty");
+        schemaValidator.validateSchema(req.getSchema());
+        int groupId = securityContext.currentGroupId();
+        OrderExtraTemplate existing = orderExtraMapper.findTemplateByCode(groupId, code);
+        Assert.notNull(existing, "template not found: " + code);
+
+        // 结构化比较：不受键顺序与空白影响，避免纯格式改动误升版本
+        boolean schemaChanged = !readJson(existing.getSchemaJson()).equals(req.getSchema());
+        existing.setName(req.getName());
+        existing.setSchemaJson(writeJson(req.getSchema()));
+        if (schemaChanged) {
+            existing.setVersion(existing.getVersion() + 1);
+        }
+        orderExtraMapper.updateTemplate(existing);
+        return toTemplateDto(existing);
+    }
+
+    @PreAuthorize("hasRole('OWNER')")
+    @Transactional
+    public OrderExtraTemplateDto setTemplateEnabled(String code, boolean enabled) {
+        Assert.hasText(code, "template code cannot be empty");
+        int groupId = securityContext.currentGroupId();
+        OrderExtraTemplate existing = orderExtraMapper.findTemplateByCode(groupId, code);
+        Assert.notNull(existing, "template not found: " + code);
+
+        orderExtraMapper.updateEnabled(groupId, code, enabled);
+        existing.setEnabled(enabled);
+        return toTemplateDto(existing);
+    }
+
+    @PreAuthorize("hasRole('OWNER')")
+    @Transactional
+    public void disableTemplate(String code) {
+        setTemplateEnabled(code, false);
     }
 
     @Transactional
