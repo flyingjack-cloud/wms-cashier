@@ -3,6 +3,7 @@ package top.flyingjack.cashier.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,7 +67,11 @@ public class OrderExtraService {
         template.setVersion(1);
         template.setSchemaJson(writeJson(req.getSchema()));
         template.setEnabled(true);
-        orderExtraMapper.insertTemplate(template);
+        try {
+            orderExtraMapper.insertTemplate(template);
+        } catch (DuplicateKeyException e) {
+            throw new IllegalArgumentException("template already exists: " + req.getCode());
+        }
         return toTemplateDto(template);
     }
 
@@ -155,13 +160,14 @@ public class OrderExtraService {
         return template;
     }
 
-private OrderExtraTemplateDto toTemplateDto(OrderExtraTemplate template) {
+    private OrderExtraTemplateDto toTemplateDto(OrderExtraTemplate template) {
         OrderExtraTemplateDto dto = new OrderExtraTemplateDto();
         dto.setId(template.getId());
         dto.setCode(template.getCode());
         dto.setName(template.getName());
         dto.setVersion(template.getVersion());
         dto.setSchema(readJson(template.getSchemaJson()));
+        dto.setEnabled(template.isEnabled());
         return dto;
     }
 

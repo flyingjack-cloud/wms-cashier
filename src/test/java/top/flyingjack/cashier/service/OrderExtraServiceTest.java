@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 import top.flyingjack.cashier.entity.OrderExtra;
 import top.flyingjack.cashier.entity.OrderExtraDto;
 import top.flyingjack.cashier.entity.OrderExtraTemplate;
@@ -46,6 +47,7 @@ class OrderExtraServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getCode()).isEqualTo("invoice");
+        assertThat(result.get(0).isEnabled()).isTrue();
         assertThat(result.get(0).getSchema().path("fields").get(0).path("key").asText())
                 .isEqualTo("invoiceTitle");
     }
@@ -143,6 +145,18 @@ class OrderExtraServiceTest {
                 .hasMessageContaining("template already exists: invoice");
 
         verify(orderExtraMapper, never()).insertTemplate(any());
+    }
+
+    @Test
+    void createTemplate_rejectsRaceDuplicateInsert() {
+        when(orderExtraMapper.findTemplateByCode(1, "invoice")).thenReturn(null);
+        doThrow(new DuplicateKeyException("duplicate key"))
+                .when(orderExtraMapper).insertTemplate(any());
+
+        assertThatThrownBy(() -> orderExtraService.createTemplate(
+                req("invoice", "发票信息", "{\"fields\":[{\"key\":\"a\",\"type\":\"text\"}]}")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("template already exists: invoice");
     }
 
     @Test

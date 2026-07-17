@@ -489,7 +489,8 @@ Get enabled order-extra templates for the current group.
         { "key": "invoiceTitle", "label": "发票抬头", "type": "text", "required": true },
         { "key": "taxNo", "label": "税号", "type": "text", "required": false }
       ]
-    }
+    },
+    "enabled": true
   }
 ]
 ```
