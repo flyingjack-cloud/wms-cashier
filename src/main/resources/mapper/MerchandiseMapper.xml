@@ -76,15 +76,18 @@
     </delete>
 
     <select id="accountByGroup" resultType="top.flyingjack.cashier.entity.MeCount">
-        SELECT c.name AS cate_name,
+        SELECT brand.name AS cate_name,
                COUNT(m.id) AS total,
                SUM(CASE WHEN m.sold THEN 1 ELSE 0 END) AS sold,
                SUM(m.cost) AS total_cost,
                SUM(m.price) AS total_price
         FROM wms_merchandise m
-        JOIN wms_category c ON m.cate_id = c.id
+        JOIN wms_category c ON m.cate_id = c.id AND c.group_id = m.group_id
+        JOIN wms_category brand ON brand.id = CASE WHEN c.parent_id = 0 THEN c.id ELSE c.parent_id END
+                                 AND brand.group_id = m.group_id
+                                 AND brand.parent_id = 0
         WHERE m.group_id = #{groupId}
-        GROUP BY c.name
+        GROUP BY brand.id, brand.name
     </select>
 
 </mapper>

@@ -1,12 +1,12 @@
 # wms-cashier API
 
-Base URL (dev): `http://localhost:8086`
+Base URL (dev): `http://localhost:8081`
 
 All endpoints require a valid JWT Bearer token (`Authorization: Bearer <token>`) unless noted otherwise.
 
 ## Timestamps
 
-All timestamps — in query/form params, JSON request bodies, and responses alike — are an **ISO-8601 string with a `Z` suffix** (e.g. `"2025-01-01T00:00:00Z"`), denoting UTC (zero offset). This is symmetric in every direction: a field looks the same whether you're sending it or receiving it, and whether it's a query param (e.g. `GET /order/range?start=2025-01-01T00:00:00Z`) or a JSON body field (e.g. `POST /order/batch`'s `sellingTime`).
+All timestamps — in query/form params, JSON request bodies, and responses alike — should be sent as an **ISO-8601 string with a `Z` suffix** (e.g. `"2025-01-01T00:00:00Z"`), denoting UTC (zero offset). This is the canonical format in every direction: a field looks the same whether you're sending it or receiving it, and whether it's a query param (e.g. `GET /order/range?start=2025-01-01T00:00:00Z`) or a JSON body field (e.g. `POST /order/batch`'s `sellingTime`). Equivalent ISO-8601 offset strings are accepted by the backend because fields are parsed as `Instant`, but clients should still use the `Z` form documented here.
 
 The backend stores and handles time exclusively as `Instant` — a single, timezone-free point on the UTC timeline. There is no offset/timezone concept anywhere in this API; converting to a user's local time is entirely the frontend's responsibility.
 
@@ -265,13 +265,13 @@ Get a staff member's permission list.
 | Auth | `ROLE_OWNER` |
 | Params | `userId: long` |
 
-**Response** `data: string[]` — e.g. `["PERMISSION:shopping", "PERMISSION:inventory"]`
+**Response** `data: string[]` — e.g. `["PERMISSION:shopping", "PERMISSION:inventory", "PERMISSION:statistic"]`
 
 ---
 
 ## Merchandise `/merchandise`
 
-### GET `/merchandise/`
+### GET `/merchandise`
 Get paginated merchandise list.
 
 | | |
@@ -306,7 +306,7 @@ Get merchandise under a category.
 
 ---
 
-### POST `/merchandise/`
+### POST `/merchandise`
 Add merchandise (supports batch via IMEI list).
 
 | | |
@@ -344,7 +344,7 @@ Delete merchandise by ID.
 ---
 
 ### GET `/merchandise/search`
-Full-text search merchandise by IMEI or other fields.
+Search merchandise by IMEI.
 
 | | |
 |---|---|
@@ -463,7 +463,129 @@ Mark an order as returned. Marks the referenced merchandise as not `sold` again.
 
 ---
 
+## Order Extra `/order-extra`, `/order/{orderId}/extra`
+
+Order extra data is stored separately from `wms_order`, so existing order creation, return, and inventory flows are unchanged. Templates define dynamic fields; each order stores a JSON payload snapshot for the chosen template.
+
+### GET `/order-extra/templates`
+Get enabled order-extra templates for the current group.
+
+| | |
+|---|---|
+| Auth | Required |
+
+**Response** `data: OrderExtraTemplateDto[]`
+
+```json
+[
+  {
+    "id": 1,
+    "code": "invoice",
+    "name": "发票信息",
+    "version": 1,
+    "schema": {
+      "fields": [
+        { "key": "invoiceTitle", "label": "发票抬头", "type": "text", "required": true },
+        { "key": "taxNo", "label": "税号", "type": "text", "required": false }
+      ]
+    }
+  }
+]
+```
+
+---
+
+### GET `/order-extra/templates/{code}`
+Get one enabled order-extra template by code.
+
+| | |
+|---|---|
+| Auth | Required |
+| Path | `code: string` |
+
+**Response** `data: OrderExtraTemplateDto`
+
+---
+
+### PUT `/order/{orderId}/extra/{templateCode}`
+Create or update an order's extra data for a template. The body must be a JSON object and is validated against the current template schema.
+
+| | |
+|---|---|
+| Auth | Required |
+| Path | `orderId: int`, `templateCode: string` |
+| Body | dynamic JSON object |
+
+```json
+{
+  "invoiceTitle": "上海某某公司",
+  "taxNo": "9131...",
+  "customerName": "张三",
+  "serialNo": "SN123456"
+}
+```
+
+**Response** `data: null`
+
+**Errors** `400` — order doesn't exist in the current group, template doesn't exist or isn't enabled, or payload fails template validation
+
+---
+
+### GET `/order/{orderId}/extra`
+Get all extra data for one order.
+
+| | |
+|---|---|
+| Auth | Required |
+| Path | `orderId: int` |
+
+**Response** `data: OrderExtraDto[]`
+
+```json
+[
+  {
+    "orderId": 123,
+    "templateCode": "invoice",
+    "templateName": "发票信息",
+    "templateVersion": 1,
+    "payload": {
+      "invoiceTitle": "上海某某公司",
+      "taxNo": "9131...",
+      "serialNo": "SN123456"
+    }
+  }
+]
+```
+
+---
+
+### GET `/order/{orderId}/extra/{templateCode}`
+Get one order-extra payload by template code.
+
+| | |
+|---|---|
+| Auth | Required |
+| Path | `orderId: int`, `templateCode: string` |
+
+**Response** `data: OrderExtraDto`
+
+---
+
 ## Profile `/profile`
+
+### GET `/profile/`
+Get the current user's profile.
+
+| | |
+|---|---|
+| Auth | Required |
+
+**Response** `data: WmsUserProfile`
+```json
+{ "userId": 1, "groupId": 10, "role": "ROLE_OWNER", "nickname": "Jack" }
+```
+
+---
 
 ### GET `/profile/role`
 Get the current user's role.
@@ -483,7 +605,7 @@ Get the current user's permission list.
 |---|---|
 | Auth | Required |
 
-**Response** `data: string[]` — e.g. `["PERMISSION:shopping", "PERMISSION:inventory"]`
+**Response** `data: string[]` — e.g. `["PERMISSION:shopping", "PERMISSION:inventory", "PERMISSION:statistic"]`
 
 ---
 

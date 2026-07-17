@@ -54,6 +54,33 @@ CREATE TABLE IF NOT EXISTS wms_order (
     is_returned   BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE TABLE IF NOT EXISTS wms_order_extra_template (
+    id          BIGSERIAL PRIMARY KEY,
+    group_id    INT NOT NULL,
+    code        VARCHAR(64) NOT NULL,
+    name        VARCHAR(128) NOT NULL,
+    version     INT NOT NULL DEFAULT 1,
+    schema_json JSONB NOT NULL,
+    enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (group_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS wms_order_extra (
+    id               BIGSERIAL PRIMARY KEY,
+    group_id         INT NOT NULL,
+    order_id         INT NOT NULL,
+    template_id      BIGINT,
+    template_code    VARCHAR(64) NOT NULL,
+    template_name    VARCHAR(128) NOT NULL,
+    template_version INT NOT NULL DEFAULT 1,
+    payload          JSONB NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (group_id, order_id, template_code)
+);
+
 CREATE TABLE IF NOT EXISTS wms_notice (
     id          SERIAL PRIMARY KEY,
     group_id    INT NOT NULL DEFAULT 0,

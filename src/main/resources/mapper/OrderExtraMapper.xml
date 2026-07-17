@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.flyingjack.cashier.mapper.OrderExtraMapper">
+
+    <insert id="insertTemplate" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO wms_order_extra_template (group_id, code, name, version, schema_json, enabled)
+        VALUES (#{groupId}, #{code}, #{name}, #{version}, #{schemaJson}::jsonb, #{enabled})
+    </insert>
+
+    <select id="findEnabledTemplates" resultType="top.flyingjack.cashier.entity.OrderExtraTemplate">
+        SELECT id, group_id, code, name, version, schema_json::text AS schema_json,
+               enabled, created_at, updated_at
+        FROM wms_order_extra_template
+        WHERE group_id = #{groupId} AND enabled = TRUE
+        ORDER BY id
+    </select>
+
+    <select id="findEnabledTemplateByCode" resultType="top.flyingjack.cashier.entity.OrderExtraTemplate">
+        SELECT id, group_id, code, name, version, schema_json::text AS schema_json,
+               enabled, created_at, updated_at
+        FROM wms_order_extra_template
+        WHERE group_id = #{groupId} AND code = #{code} AND enabled = TRUE
+    </select>
+
+    <insert id="upsertExtra">
+        INSERT INTO wms_order_extra (group_id, order_id, template_id, template_code, template_name,
+                                     template_version, payload)
+        VALUES (#{groupId}, #{orderId}, #{templateId}, #{templateCode}, #{templateName},
+                #{templateVersion}, #{payload}::jsonb)
+        ON CONFLICT (group_id, order_id, template_code)
+        DO UPDATE SET template_id = EXCLUDED.template_id,
+                      template_name = EXCLUDED.template_name,
+                      template_version = EXCLUDED.template_version,
+                      payload = EXCLUDED.payload,
+                      updated_at = NOW()
+    </insert>
+
+    <select id="findExtrasByOrderId" resultType="top.flyingjack.cashier.entity.OrderExtra">
+        SELECT id, group_id, order_id, template_id, template_code, template_name,
+               template_version, payload::text AS payload, created_at, updated_at
+        FROM wms_order_extra
+        WHERE group_id = #{groupId} AND order_id = #{orderId}
+        ORDER BY id
+    </select>
+
+    <select id="findExtraByOrderIdAndCode" resultType="top.flyingjack.cashier.entity.OrderExtra">
+        SELECT id, group_id, order_id, template_id, template_code, template_name,
+               template_version, payload::text AS payload, created_at, updated_at
+        FROM wms_order_extra
+        WHERE group_id = #{groupId} AND order_id = #{orderId} AND template_code = #{templateCode}
+    </select>
+
+</mapper>
