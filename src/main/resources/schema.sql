@@ -81,6 +81,17 @@ CREATE TABLE IF NOT EXISTS wms_order_extra (
     UNIQUE (group_id, order_id, template_code)
 );
 
+CREATE TABLE IF NOT EXISTS wms_receipt_template (
+    id           BIGSERIAL PRIMARY KEY,
+    group_id     INT NOT NULL,
+    printer_type VARCHAR(32) NOT NULL,
+    layout       JSONB NOT NULL,
+    enabled      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (group_id, printer_type)
+);
+
 CREATE TABLE IF NOT EXISTS wms_notice (
     id          SERIAL PRIMARY KEY,
     group_id    INT NOT NULL DEFAULT 0,

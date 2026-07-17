@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="top.flyingjack.cashier.mapper.ReceiptTemplateMapper">
+
+    <insert id="insertTemplate" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO wms_receipt_template (group_id, printer_type, layout, enabled)
+        VALUES (#{groupId}, #{printerType}, #{layout}::jsonb, #{enabled})
+    </insert>
+
+    <update id="updateTemplate">
+        UPDATE wms_receipt_template
+        SET layout = #{layout}::jsonb,
+            updated_at = NOW()
+        WHERE id = #{id} AND group_id = #{groupId}
+    </update>
+
+    <update id="updateEnabled">
+        UPDATE wms_receipt_template
+        SET enabled = #{enabled},
+            updated_at = NOW()
+        WHERE group_id = #{groupId} AND printer_type = #{printerType}
+    </update>
+
+    <select id="findTemplates" resultType="top.flyingjack.cashier.entity.ReceiptTemplate">
+        SELECT id, group_id, printer_type, layout::text AS layout,
+               enabled, created_at, updated_at
+        FROM wms_receipt_template
+        WHERE group_id = #{groupId}
+        <if test="!includeDisabled">
+            AND enabled = TRUE
+        </if>
+        ORDER BY id
+    </select>
+
+    <select id="findTemplateByPrinterType" resultType="top.flyingjack.cashier.entity.ReceiptTemplate">
+        SELECT id, group_id, printer_type, layout::text AS layout,
+               enabled, created_at, updated_at
+        FROM wms_receipt_template
+        WHERE group_id = #{groupId} AND printer_type = #{printerType}
+    </select>
+
+    <select id="findEnabledTemplateByPrinterType" resultType="top.flyingjack.cashier.entity.ReceiptTemplate">
+        SELECT id, group_id, printer_type, layout::text AS layout,
+               enabled, created_at, updated_at
+        FROM wms_receipt_template
+        WHERE group_id = #{groupId} AND printer_type = #{printerType} AND enabled = TRUE
+    </select>
+
+</mapper>
