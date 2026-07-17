@@ -30,7 +30,8 @@ class OrderExtraServiceTest {
         orderExtraMapper = mock(OrderExtraMapper.class);
         orderMapper = mock(OrderMapper.class);
         securityContext = mock(WmsSecurityContext.class);
-        orderExtraService = new OrderExtraService(orderExtraMapper, orderMapper, securityContext, new ObjectMapper());
+        orderExtraService = new OrderExtraService(orderExtraMapper, orderMapper, securityContext,
+                new ObjectMapper(), new OrderExtraSchemaValidator());
         when(securityContext.currentGroupId()).thenReturn(1);
     }
 

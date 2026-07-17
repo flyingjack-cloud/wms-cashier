@@ -23,13 +23,16 @@ public class OrderExtraService {
     private final OrderMapper orderMapper;
     private final WmsSecurityContext securityContext;
     private final ObjectMapper objectMapper;
+    private final OrderExtraSchemaValidator schemaValidator;
 
     public OrderExtraService(OrderExtraMapper orderExtraMapper, OrderMapper orderMapper,
-                             WmsSecurityContext securityContext, ObjectMapper objectMapper) {
+                             WmsSecurityContext securityContext, ObjectMapper objectMapper,
+                             OrderExtraSchemaValidator schemaValidator) {
         this.orderExtraMapper = orderExtraMapper;
         this.orderMapper = orderMapper;
         this.securityContext = securityContext;
         this.objectMapper = objectMapper;
+        this.schemaValidator = schemaValidator;
     }
 
     public List<OrderExtraTemplateDto> getTemplates() {
@@ -52,7 +55,7 @@ public class OrderExtraService {
         OrderExtraTemplate template = findTemplate(templateCode);
         JsonNode payloadNode = objectMapper.valueToTree(payload);
         Assert.isTrue(payloadNode.isObject(), "payload must be a JSON object");
-        validatePayload(template, payloadNode);
+        schemaValidator.validatePayload(readJson(template.getSchemaJson()), payloadNode);
 
         OrderExtra extra = new OrderExtra();
         extra.setGroupId(groupId);
@@ -88,46 +91,7 @@ public class OrderExtraService {
         return template;
     }
 
-    private void validatePayload(OrderExtraTemplate template, JsonNode payload) {
-        JsonNode fields = readJson(template.getSchemaJson()).path("fields");
-        Assert.isTrue(fields.isArray(), "template fields must be an array");
-        for (JsonNode field : fields) {
-            String key = field.path("key").asText();
-            Assert.hasText(key, "template field key cannot be empty");
-            JsonNode value = payload.get(key);
-            boolean required = field.path("required").asBoolean(false);
-            if (required) {
-                Assert.isTrue(value != null && !value.isNull()
-                                && !(value.isTextual() && !org.springframework.util.StringUtils.hasText(value.asText())),
-                        "missing required field: " + key);
-            }
-            if (value != null && !value.isNull()) {
-                validateFieldType(key, field.path("type").asText("text"), value);
-            }
-        }
-    }
-
-    private void validateFieldType(String key, String type, JsonNode value) {
-        switch (type) {
-            case "number":
-                Assert.isTrue(value.isNumber(), "field must be number: " + key);
-                break;
-            case "boolean":
-                Assert.isTrue(value.isBoolean(), "field must be boolean: " + key);
-                break;
-            case "text":
-            case "textarea":
-            case "date":
-            case "datetime":
-            case "select":
-                Assert.isTrue(value.isTextual(), "field must be text: " + key);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private OrderExtraTemplateDto toTemplateDto(OrderExtraTemplate template) {
+private OrderExtraTemplateDto toTemplateDto(OrderExtraTemplate template) {
         OrderExtraTemplateDto dto = new OrderExtraTemplateDto();
         dto.setId(template.getId());
         dto.setCode(template.getCode());
