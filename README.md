@@ -160,6 +160,7 @@ Controller → Service → Mapper Interface → MyBatis XML → PostgreSQL
 | `wms_order` | 销售订单 | `id`, `group_id`, `me_id`, `selling_price`, `is_returned` |
 | `wms_order_extra_template` | 订单附加数据模板（票据等动态字段定义） | `id`, `group_id`, `code`, `version`, `schema_json`, `enabled` |
 | `wms_order_extra` | 订单附加数据（按模板快照的 JSON payload） | `id`, `group_id`, `order_id`, `template_code`, `template_version`, `payload` |
+| `wms_receipt_template` | 小票/A4 打印布局模板（按 group + printer_type） | `id`, `group_id`, `printer_type`, `layout`, `enabled` |
 | `wms_notice` | 系统通知 | `id`, `group_id`, `type`, `content` |
 
 完整 DDL 见 [`src/main/resources/schema.sql`](src/main/resources/schema.sql)。
@@ -859,6 +860,202 @@ Get one order-extra payload by template code.
 | Path | `orderId: int`, `templateCode: string` |
 
 **Response** `data: OrderExtraDto`
+
+---
+
+### Receipt Template `/receipt-templates`
+
+Templates control how a receipt/A4 document is laid out when printed. Each group has at most one
+template per `printerType`; the template stores a grid-style layout (`page`/`rows`/`columns`), not
+resolved data — the client is responsible for merging the layout with real order/group/profile data
+at print time.
+
+#### GET `/receipt-templates`
+Get enabled receipt templates for the current group.
+
+| | |
+|---|---|
+| Auth | Required; `includeDisabled=true` requires `ROLE_OWNER` |
+| Query | `includeDisabled: boolean` — default `false` |
+
+**Response** `data: ReceiptTemplateDto[]`
+
+```json
+[
+  {
+    "id": 1,
+    "printerType": "A4",
+    "layout": {
+      "rows": [
+        { "columns": [
+          { "span": 1, "type": "label", "field": "IMEI:", "style": { "bold": true } },
+          { "span": 2, "type": "text", "field": "order.imei", "style": {} }
+        ]}
+      ]
+    },
+    "enabled": true
+  }
+]
+```
+
+---
+
+#### GET `/receipt-templates/{printerType}`
+Get one enabled receipt template by printer type.
+
+| | |
+|---|---|
+| Auth | Required |
+| Path | `printerType: string` — one of `A4`, `THERMAL_58`, `THERMAL_80` |
+
+**Response** `data: ReceiptTemplateDto`
+
+---
+
+#### GET `/receipt-templates/fields`
+Get the fields available for binding in a layout editor: fixed fields that are always resolvable,
+plus fields dynamically expanded from the group's enabled order-extra templates.
+
+| | |
+|---|---|
+| Auth | Required |
+
+**Response** `data: AvailableFieldsDto`
+
+```json
+{
+  "fixed": [
+    { "field": "store.storeName", "label": "店铺名称" },
+    { "field": "store.address", "label": "店铺地址" },
+    { "field": "order.sellingTime", "label": "销售时间" },
+    { "field": "order.brand", "label": "品牌" },
+    { "field": "order.model", "label": "型号" },
+    { "field": "order.imei", "label": "IMEI" },
+    { "field": "order.sellingPrice", "label": "销售价格" },
+    { "field": "order.cost", "label": "成本" },
+    { "field": "cashier.printedBy", "label": "打印人" }
+  ],
+  "extra": [
+    {
+      "field": "extra.invoice.invoiceTitle",
+      "label": "发票信息 - 发票抬头",
+      "templateCode": "invoice",
+      "key": "invoiceTitle"
+    }
+  ]
+}
+```
+
+---
+
+#### POST `/receipt-templates`
+Create a receipt template.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Body | `printerType: string`, `layout: object` |
+
+```json
+{
+  "printerType": "A4",
+  "layout": {
+    "rows": [
+      { "columns": [
+        { "span": 1, "type": "label", "field": "IMEI:", "style": { "bold": true } },
+        { "span": 2, "type": "text", "field": "order.imei", "style": {} }
+      ]}
+    ]
+  }
+}
+```
+
+**Response** `data: ReceiptTemplateDto` — the created template
+
+**Errors** `400` — `printerType` already exists in the group (use the enable endpoint instead of
+recreating), `printerType` isn't a supported value, or the layout fails validation (see "Receipt
+layout rules" below)
+
+---
+
+#### PUT `/receipt-templates/{printerType}`
+Update a template's layout. `printerType` is immutable — one row per `(group, printerType)`.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Path | `printerType: string` |
+| Body | `layout: object` |
+
+**Response** `data: ReceiptTemplateDto`
+
+**Errors** `400` — template doesn't exist, or the layout fails validation
+
+---
+
+#### DELETE `/receipt-templates/{printerType}`
+Disable a template. Soft delete: the row is kept with `enabled = false`.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Path | `printerType: string` |
+
+**Response** `data: null`
+
+**Errors** `400` — template doesn't exist
+
+---
+
+#### PUT `/receipt-templates/{printerType}/enabled`
+Enable or disable a template.
+
+| | |
+|---|---|
+| Auth | `ROLE_OWNER` |
+| Path | `printerType: string` |
+| Body | `enabled: boolean` |
+
+**Response** `data: ReceiptTemplateDto`
+
+**Errors** `400` — template doesn't exist
+
+---
+
+#### Receipt layout rules
+
+A template's `layout` must be a JSON object with a non-empty `rows` array. `page` is an optional
+free-form object (margins, orientation, etc. — not validated). Each row:
+
+| Key | Required | Notes |
+|---|---|---|
+| `height` | no | Not validated, passed through to the frontend renderer |
+| `columns` | yes | Non-empty array |
+
+Each column:
+
+| Key | Required | Notes |
+|---|---|---|
+| `span` | no | Not validated, interpreted by the frontend's grid system |
+| `type` | yes | One of `text`, `label`, `image`, `divider`, `table` |
+| `field` | depends on `type` — see below | |
+| `style` | no | Free-form object if present, not validated |
+
+`field`'s meaning depends on `type`:
+
+- `type: "text"` — `field` is a **data-binding path**, required. Must be one of the nine fixed
+  fields (`store.storeName`, `store.address`, `order.sellingTime`, `order.brand`, `order.model`,
+  `order.imei`, `order.sellingPrice`, `order.cost`, `cashier.printedBy`) or match
+  `extra.<templateCode>.<key>` (loosely validated — only the two-segment shape is checked, not
+  whether that order-extra template/field currently exists in the group)
+- `type: "label"` — `field` is **literal text** to print as-is (e.g. `"IMEI:"`), required,
+  non-blank
+- `type: "image"` / `type: "divider"` — `field` optional, not validated
+- `type: "table"` — internal structure not yet defined; only requires the column itself to be
+  structurally valid
+
+`cashier.printedBy` resolves to the nickname of whoever is currently printing, not the order's
+original seller — `wms_order` doesn't record who created it.
 
 ---
 
