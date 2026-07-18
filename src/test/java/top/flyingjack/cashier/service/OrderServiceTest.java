@@ -99,6 +99,33 @@ class OrderServiceTest {
     }
 
     @Test
+    void insertOrderBatch_returnsGeneratedIdsInInputOrder() {
+        when(securityContext.currentGroupId()).thenReturn(5);
+        when(merchandiseService.findById(10)).thenReturn(merchandise(10, false));
+        when(merchandiseService.findById(11)).thenReturn(merchandise(11, false));
+        Order order1 = new Order();
+        order1.setMeId(10);
+        order1.setSellingPrice(new BigDecimal("100"));
+        order1.setSellingTime(Instant.now());
+        order1.setRemark("test");
+        Order order2 = new Order();
+        order2.setMeId(11);
+        order2.setSellingPrice(new BigDecimal("100"));
+        order2.setSellingTime(Instant.now());
+        order2.setRemark("test");
+        doAnswer(inv -> {
+            List<Order> batch = inv.getArgument(0);
+            batch.get(0).setId(101);
+            batch.get(1).setId(102);
+            return null;
+        }).when(orderMapper).insertBatch(any());
+
+        List<Integer> ids = orderService.insertOrderBatch(List.of(order1, order2));
+
+        assertThat(ids).containsExactly(101, 102);
+    }
+
+    @Test
     void insertOrderBatch_marksAllMerchandiseSold() {
         when(securityContext.currentGroupId()).thenReturn(5);
         when(merchandiseService.findById(10)).thenReturn(merchandise(10, false));

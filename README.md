@@ -599,7 +599,7 @@ Batch create orders. Marks each referenced merchandise as `sold`.
 ]
 ```
 
-**Response** `data: null`
+**Response** `data: int[]` — new order IDs, in the same order as the request body
 
 **Errors** `400` — any order's `meId` doesn't reference an existing merchandise in the current group, that merchandise is already `sold`, or the same `meId` appears more than once in the batch
 

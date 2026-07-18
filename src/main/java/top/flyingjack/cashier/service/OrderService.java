@@ -48,7 +48,7 @@ public class OrderService {
     }
 
     @Transactional
-    public void insertOrderBatch(List<Order> orders) {
+    public List<Integer> insertOrderBatch(List<Order> orders) {
         Assert.notEmpty(orders, "orders cannot be empty");
         orders.forEach(o -> validateSellingTime(o.getSellingTime()));
         long distinctMeIds = orders.stream().map(Order::getMeId).distinct().count();
@@ -59,6 +59,7 @@ public class OrderService {
         orders.forEach(o -> o.setGroupId(groupId));
         orderMapper.insertBatch(orders);
         orders.forEach(o -> merchandiseService.markSold(o.getMeId(), true));
+        return orders.stream().map(Order::getId).toList();
     }
 
     private void validateNotSold(int meId) {
