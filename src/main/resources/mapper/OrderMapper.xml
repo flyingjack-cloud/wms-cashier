@@ -8,7 +8,7 @@
         VALUES (#{groupId}, #{meId}, #{sellingPrice}, #{sellingTime}, #{remark}, #{returned})
     </insert>
 
-    <insert id="insertBatch">
+    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO wms_order (group_id, me_id, selling_price, selling_time, remark, is_returned)
         VALUES
         <foreach collection="orders" item="o" separator=",">

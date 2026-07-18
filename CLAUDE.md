@@ -118,7 +118,7 @@ All error codes **must** be defined in `SysErrorCode` (not hardcoded). The workf
 ### Date/Time
 - Use `Instant` for all date/time fields — never `LocalDateTime` or `Date`.
 - All times stored as UTC+0 in the database.
-- **wms-cashier overrides the root convention**: all timestamps — query/form params, JSON request bodies, and responses — are ISO-8601 strings with a `Z` suffix (e.g. `"2025-01-01T00:00:00Z"`), symmetric in both directions. Do not use bare epoch numbers for new code. See `API.md`'s "Timestamps" section for the full rationale (this was a deliberate fix for a unit-mismatch bug — Jackson silently parsed bare epoch-ms numbers in JSON bodies as epoch-*seconds*) and the documented edge cases (query params still tolerate a bare epoch-ms number for backward compatibility with older clients; JSON bodies do not, and silently misparse one).
+- **wms-cashier overrides the root convention**: all timestamps — query/form params, JSON request bodies, and responses — are ISO-8601 strings with a `Z` suffix (e.g. `"2025-01-01T00:00:00Z"`), symmetric in both directions. Do not use bare epoch numbers for new code. See `README.md`'s "API 参考 → Timestamps" section for the full rationale (this was a deliberate fix for a unit-mismatch bug — Jackson silently parsed bare epoch-ms numbers in JSON bodies as epoch-*seconds*) and the documented edge cases (query params still tolerate a bare epoch-ms number for backward compatibility with older clients; JSON bodies do not, and silently misparse one).
 - Timezone conversion is the **frontend's** responsibility.
 
 ### Caching
@@ -132,7 +132,7 @@ Each runnable service has a `Dockerfile` using `eclipse-temurin:21-jdk-alpine` (
 ### Kubernetes
 **All K8s deployment manifests live in the dedicated GitOps repository [`flyingjack-cloud/k8s-gitops`](https://github.com/flyingjack-cloud/k8s-gitops) — do not add k8s config to service repos.**
 
-Structure in that repo: `{service}/base/` and `{service}/overlays/{profile}/` (Kustomize). Namespace pattern: `flyingjack-{profile}`. For first-time deployment, manual Secret setup, and ArgoCD Application creation, see each service's `DEPLOY.md`.
+Structure in that repo: `{service}/base/` and `{service}/overlays/{profile}/` (Kustomize). Namespace pattern: `flyingjack-{profile}`. For first-time deployment, manual Secret setup, and ArgoCD Application creation, see each service's `DEPLOY.md` — for wms-cashier specifically, this content lives in `README.md`'s "部署" section instead of a standalone `DEPLOY.md`.
 
 ## CI/CD Pipeline
 

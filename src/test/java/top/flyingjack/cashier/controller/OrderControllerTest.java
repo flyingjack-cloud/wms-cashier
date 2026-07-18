@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import top.flyingjack.cashier.service.OrderService;
@@ -13,10 +14,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +45,19 @@ class OrderControllerTest {
         org.mockito.Mockito.verify(orderService).insertOrder(
                 eq(10), eq(new BigDecimal("150.00")), eq("cash"),
                 eq(Instant.parse("2025-01-01T00:00:00Z")));
+    }
+
+    @Test
+    void batchCreateOrder_returnsGeneratedIdsInResponseBody() throws Exception {
+        when(orderService.insertOrderBatch(any())).thenReturn(List.of(101, 102));
+
+        mockMvc.perform(post("/order/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"meId\":10,\"sellingPrice\":100,\"sellingTime\":\"2025-01-01T00:00:00Z\",\"remark\":\"a\"},"
+                                + "{\"meId\":11,\"sellingPrice\":100,\"sellingTime\":\"2025-01-01T00:00:00Z\",\"remark\":\"b\"}]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0]").value(101))
+                .andExpect(jsonPath("$.data[1]").value(102));
     }
 
     @Test

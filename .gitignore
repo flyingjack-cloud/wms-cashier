@@ -1,2 +1,7 @@
 application-dev.*
+.env.lan
+.env.lan.*
+!.env.lan.example
+/dist/lan/
 target/
+.superpowers/

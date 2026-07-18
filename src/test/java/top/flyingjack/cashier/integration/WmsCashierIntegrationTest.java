@@ -7,6 +7,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import top.flyingjack.cashier.BaseContainerTest;
 import top.flyingjack.cashier.entity.Category;
+import top.flyingjack.cashier.entity.MeCount;
 import top.flyingjack.cashier.entity.Merchandise;
 import top.flyingjack.cashier.entity.MerchandiseWithCategoryDto;
 import top.flyingjack.cashier.entity.Order;
@@ -350,5 +351,55 @@ class WmsCashierIntegrationTest extends BaseContainerTest {
 
         List<Merchandise> soldResults = merchandiseMapper.findByCateId(787, category.getId(), true);
         assertThat(soldResults).extracting(Merchandise::getImei).containsExactly("IMEI-CATE-SOLD");
+    }
+
+    @Test
+    void merchandiseAccountByGroup_groupsModelInventoryByBrand() {
+        Category brand = new Category();
+        brand.setGroupId(788);
+        brand.setParentId(0);
+        brand.setName("苹果");
+        categoryMapper.insert(brand);
+
+        Category model13 = new Category();
+        model13.setGroupId(788);
+        model13.setParentId(brand.getId());
+        model13.setName("iPhone 13");
+        categoryMapper.insert(model13);
+
+        Category model14 = new Category();
+        model14.setGroupId(788);
+        model14.setParentId(brand.getId());
+        model14.setName("iPhone 14");
+        categoryMapper.insert(model14);
+
+        Merchandise unsold = new Merchandise();
+        unsold.setGroupId(788);
+        unsold.setCateId(model13.getId());
+        unsold.setCost(new BigDecimal("100.00"));
+        unsold.setPrice(new BigDecimal("150.00"));
+        unsold.setImei("IMEI-ACCOUNT-UNSOLD");
+        unsold.setSold(false);
+        unsold.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(unsold);
+
+        Merchandise sold = new Merchandise();
+        sold.setGroupId(788);
+        sold.setCateId(model14.getId());
+        sold.setCost(new BigDecimal("200.00"));
+        sold.setPrice(new BigDecimal("250.00"));
+        sold.setImei("IMEI-ACCOUNT-SOLD");
+        sold.setSold(true);
+        sold.setCreatedAt(Instant.now());
+        merchandiseMapper.insert(sold);
+
+        List<MeCount> result = merchandiseMapper.accountByGroup(788);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCateName()).isEqualTo("苹果");
+        assertThat(result.get(0).getTotal()).isEqualTo(2);
+        assertThat(result.get(0).getSold()).isEqualTo(1);
+        assertThat(result.get(0).getTotalCost()).isEqualByComparingTo("300.00");
+        assertThat(result.get(0).getTotalPrice()).isEqualByComparingTo("400.00");
     }
 }

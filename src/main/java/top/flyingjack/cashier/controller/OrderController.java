@@ -32,9 +32,9 @@ public class OrderController {
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<ApiRes<Void>> batchCreateOrder(@RequestBody List<Order> orders) {
-        orderService.insertOrderBatch(orders);
-        return ResponseEntity.ok(ApiRes.success());
+    public ResponseEntity<ApiRes<List<Integer>>> batchCreateOrder(@RequestBody List<Order> orders) {
+        List<Integer> ids = orderService.insertOrderBatch(orders);
+        return ResponseEntity.ok(ApiRes.success(ids));
     }
 
     @GetMapping("/range")
